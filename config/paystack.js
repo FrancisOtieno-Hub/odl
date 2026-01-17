@@ -1,348 +1,388 @@
-const PAYSTACK_CONFIG = {
-  publicKey: 'pk_live_cedf130a1a00ac0547eedbbd0d7349e92d15446a', // Replace with your Paystack public key
-  subscriptionAmount: 30000, // Amount in kobo (300 KES = 30000 kobo)
-  currency: 'KES',
-  planCode: 'PLN_ap8knacmb5ywwj2', // Create a plan in Paystack dashboard
-  callbackUrl: `${window.location.origin}/payment-callback`,
-  channels: ['card', 'mobile_money', 'bank'] // Payment methods
-};
+ const PAYSTACK_CONFIG = {
+            publicKey: 'pk_test_your_public_key',
+            amount: 30000, // 300 KES in kobo
+            currency: 'KES'
+        };
 
-// =============================================================================
-// PAYSTACK PAYMENT CLASS
-// =============================================================================
+        // =============================================================================
+        // APP STATE
+        // =============================================================================
+        let currentUser = null;
+        let userSubscription = null;
+        let books = [];
+        let isAuthModeSignup = false;
 
-class PaystackPayment {
-  constructor() {
-    this.publicKey = PAYSTACK_CONFIG.publicKey;
-    this.amount = PAYSTACK_CONFIG.subscriptionAmount;
-    this.scriptLoaded = false;
-    this.loadPaystackScript();
-  }
-
-  // Load Paystack inline script
-  loadPaystackScript() {
-    if (document.getElementById('paystack-script')) {
-      this.scriptLoaded = true;
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = 'paystack-script';
-    script.src = 'https://js.paystack.co/v1/inline.js';
-    script.onload = () => {
-      this.scriptLoaded = true;
-      console.log('Paystack script loaded successfully');
-    };
-    script.onerror = () => {
-      console.error('Failed to load Paystack script');
-    };
-    document.head.appendChild(script);
-  }
-
-  // Initialize one-time payment
-  async initializePayment(userData) {
-    if (!this.scriptLoaded) {
-      await this.waitForScript();
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const handler = PaystackPop.setup({
-          key: this.publicKey,
-          email: userData.email,
-          amount: this.amount,
-          currency: PAYSTACK_CONFIG.currency,
-          ref: this.generateReference(),
-          metadata: {
-            custom_fields: [
-              {
-                display_name: "User ID",
-                variable_name: "user_id",
-                value: userData.userId
-              },
-              {
-                display_name: "Full Name",
-                variable_name: "full_name",
-                value: userData.fullName
-              },
-              {
-                display_name: "Subscription Type",
-                variable_name: "subscription_type",
-                value: "monthly"
-              }
-            ]
-          },
-          channels: PAYSTACK_CONFIG.channels,
-          callback: (response) => {
-            console.log('Payment successful:', response);
-            resolve(response);
-          },
-          onClose: () => {
-            console.log('Payment window closed');
-            reject(new Error('Payment window closed by user'));
-          }
-        });
-
-        handler.openIframe();
-      } catch (error) {
-        console.error('Payment initialization error:', error);
-        reject(error);
-      }
-    });
-  }
-
-  // Initialize subscription payment
-  async initializeSubscription(userData) {
-    if (!this.scriptLoaded) {
-      await this.waitForScript();
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const handler = PaystackPop.setup({
-          key: this.publicKey,
-          email: userData.email,
-          amount: this.amount,
-          currency: PAYSTACK_CONFIG.currency,
-          ref: this.generateReference(),
-          plan: PAYSTACK_CONFIG.planCode, // Subscription plan
-          metadata: {
-            custom_fields: [
-              {
-                display_name: "User ID",
-                variable_name: "user_id",
-                value: userData.userId
-              },
-              {
-                display_name: "Full Name",
-                variable_name: "full_name",
-                value: userData.fullName
-              }
-            ]
-          },
-          channels: PAYSTACK_CONFIG.channels,
-          callback: (response) => {
-            console.log('Subscription successful:', response);
-            resolve(response);
-          },
-          onClose: () => {
-            console.log('Subscription window closed');
-            reject(new Error('Subscription window closed by user'));
-          }
-        });
-
-        handler.openIframe();
-      } catch (error) {
-        console.error('Subscription initialization error:', error);
-        reject(error);
-      }
-    });
-  }
-
-  // Verify payment on backend
-  async verifyPayment(reference) {
-    try {
-      // This should be done on your backend for security
-      // For now, we'll use a serverless function or Supabase Edge Function
-      const response = await fetch('/api/verify-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reference })
-      });
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Payment verification error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Generate unique payment reference
-  generateReference() {
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000000);
-    return `ODL_${timestamp}_${random}`;
-  }
-
-  // Wait for Paystack script to load
-  waitForScript() {
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(() => {
-        if (this.scriptLoaded) {
-          clearInterval(checkInterval);
-          resolve();
+        // =============================================================================
+        // INITIALIZATION
+        // =============================================================================
+        async function initApp() {
+            try {
+                await checkUserAuth();
+                await loadBooks();
+            } catch (error) {
+                console.error('Init error:', error);
+                showToast('Failed to initialize app', 'error');
+            }
         }
-      }, 100);
-    });
-  }
 
-  // Check payment status
-  async checkPaymentStatus(reference) {
-    try {
-      const response = await fetch(`/api/check-payment-status/${reference}`);
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Status check error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-}
+        // =============================================================================
+        // AUTHENTICATION
+        // =============================================================================
+        async function checkUserAuth() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (session) {
+                    currentUser = session.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
 
-// =============================================================================
-// PAYMENT WORKFLOW MANAGER
-// =============================================================================
+        async function checkSubscriptionStatus() {
+            if (!currentUser) return;
 
-class PaymentWorkflow {
-  constructor() {
-    this.paystack = new PaystackPayment();
-  }
+            try {
+                const { data, error } = await supabase
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('status', 'active')
+                    .gte('end_date', new Date().toISOString())
+                    .single();
 
-  // Complete payment workflow with Supabase integration
-  async processSubscriptionPayment(user) {
-    try {
-      // Show loading state
-      this.showLoadingState('Processing payment...');
+                if (data) {
+                    userSubscription = data;
+                }
+            } catch (error) {
+                console.error('Subscription check error:', error);
+            }
+        }
 
-      // Initialize Paystack payment
-      const paymentResponse = await this.paystack.initializeSubscription({
-        email: user.email,
-        userId: user.id,
-        fullName: user.full_name || user.email
-      });
+        function updateUserUI() {
+            const userActions = document.getElementById('userActions');
+            
+            if (currentUser) {
+                const userName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+                
+                if (userSubscription) {
+                    userActions.innerHTML = `
+                        <div class="subscription-badge">⭐ Premium Member</div>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                } else {
+                    userActions.innerHTML = `
+                        <span style="margin-right: 1rem;">Hi, ${userName}!</span>
+                        <button class="btn btn-primary" onclick="showPaymentModal()">Subscribe</button>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                }
+            }
+        }
 
-      // Verify payment
-      this.showLoadingState('Verifying payment...');
-      const verification = await this.verifyPaymentWithBackend(paymentResponse.reference);
+        async function handleAuth(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const fullName = document.getElementById('fullName').value;
 
-      if (!verification.success) {
-        throw new Error('Payment verification failed');
-      }
+            try {
+                if (isAuthModeSignup) {
+                    const { data, error } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: { full_name: fullName }
+                        }
+                    });
 
-      // Create subscription in Supabase
-      this.showLoadingState('Activating subscription...');
-      const subscription = await odlSubscription.createSubscription(
-        user.id,
-        paymentResponse.reference,
-        verification.subscriptionCode
-      );
+                    if (error) throw error;
 
-      if (!subscription.success) {
-        throw new Error('Failed to create subscription');
-      }
+                    if (data.user) {
+                        await supabase.from('profiles').insert([{
+                            id: data.user.id,
+                            email: email,
+                            full_name: fullName
+                        }]);
+                    }
 
-      // Record payment in history
-      await odlPayments.recordPayment(
-        user.id,
-        subscription.subscription.id,
-        300.00,
-        paymentResponse.reference,
-        'successful'
-      );
+                    showToast('Account created! Please check your email to verify.', 'success');
+                    closeAuthModal();
+                } else {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
 
-      // Success!
-      this.hideLoadingState();
-      this.showSuccessMessage('Subscription activated successfully! 🎉');
+                    if (error) throw error;
 
-      return {
-        success: true,
-        subscription: subscription.subscription,
-        reference: paymentResponse.reference
-      };
+                    currentUser = data.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                    closeAuthModal();
+                    showToast('Welcome back!', 'success');
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast(error.message, 'error');
+            }
+        }
 
-    } catch (error) {
-      console.error('Payment workflow error:', error);
-      this.hideLoadingState();
-      this.showErrorMessage(error.message || 'Payment failed. Please try again.');
+        async function logout() {
+            try {
+                await supabase.auth.signOut();
+                currentUser = null;
+                userSubscription = null;
+                location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Logout failed', 'error');
+            }
+        }
 
-      // Record failed payment
-      if (user && user.id) {
-        await odlPayments.recordPayment(
-          user.id,
-          null,
-          300.00,
-          null,
-          'failed'
-        );
-      }
+        // =============================================================================
+        // BOOKS
+        // =============================================================================
+        async function loadBooks() {
+            try {
+                const { data, error } = await supabase
+                    .from('books')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false });
 
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
+                if (error) throw error;
 
-  // Verify payment with backend
-  async verifyPaymentWithBackend(reference) {
-    // This will call your Supabase Edge Function or serverless function
-    // For now, we'll simulate it - YOU MUST IMPLEMENT THIS SECURELY
-    try {
-      const response = await fetch('/api/verify-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reference })
-      });
+                books = data || [];
+                renderBooks();
+                document.getElementById('loadingState').style.display = 'none';
+            } catch (error) {
+                console.error('Load books error:', error);
+                
+                // Fallback to sample books if database is empty
+                books = [
+                    {
+                        id: '1',
+                        title: 'The Midnight Chronicles',
+                        author: 'Your Name',
+                        description: 'A gripping tale of mystery and adventure.',
+                        cover_url: '',
+                        pdf_url: 'https://drive.google.com/file/d/YOUR_FILE_ID/preview'
+                    }
+                ];
+                renderBooks();
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
 
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Verification error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+        function renderBooks() {
+            const grid = document.getElementById('booksGrid');
+            
+            if (books.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No books available yet. Check back soon!</p>';
+                return;
+            }
 
-  // UI Helper: Show loading state
-  showLoadingState(message) {
-    const modal = document.getElementById('paymentModal');
-    const content = modal.querySelector('.modal-content');
-    
-    content.innerHTML = `
-      <div style="text-align: center; padding: 3rem;">
-        <div class="spinner" style="margin: 0 auto 1rem;"></div>
-        <p style="font-size: 1.2rem;">${message}</p>
-      </div>
-    `;
-  }
+            grid.innerHTML = books.map(book => `
+                <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
+                    <div class="book-cover">
+                        ${book.cover_url ? `<img src="${book.cover_url}" alt="${book.title}">` : '📖'}
+                    </div>
+                    <div class="book-info">
+                        <div class="book-title">${book.title}</div>
+                        <div class="book-author">by ${book.author}</div>
+                        <div class="book-description">${book.description || 'A captivating story awaits...'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-  // UI Helper: Hide loading state
-  hideLoadingState() {
-    const modal = document.getElementById('paymentModal');
-    modal.classList.remove('active');
-  }
+        function openBook(book) {
+            if (!currentUser) {
+                showToast('Please sign in to read books', 'error');
+                showAuthModal('login');
+                return;
+            }
 
-  // UI Helper: Show success message
-  showSuccessMessage(message) {
-    alert(message); // Replace with a nice toast notification
-    window.location.reload(); // Reload to update UI
-  }
+            if (!userSubscription) {
+                showPaymentModal();
+                return;
+            }
 
-  // UI Helper: Show error message
-  showErrorMessage(message) {
-    alert(`Error: ${message}`); // Replace with a nice error notification
-  }
-}
+            openPDFReader(book.pdf_url);
+        }
 
+        // =============================================================================
+        // PAYMENT
+        // =============================================================================
+        async function processPayment() {
+            if (!currentUser) {
+                showToast('Please sign in first', 'error');
+                showAuthModal('login');
+                return;
+            }
 
-// =============================================================================
-// EXPORT INSTANCES
-// =============================================================================
+            try {
+                const handler = PaystackPop.setup({
+                    key: PAYSTACK_CONFIG.publicKey,
+                    email: currentUser.email,
+                    amount: PAYSTACK_CONFIG.amount,
+                    currency: PAYSTACK_CONFIG.currency,
+                    ref: `ODL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    metadata: {
+                        custom_fields: [{
+                            display_name: "User ID",
+                            variable_name: "user_id",
+                            value: currentUser.id
+                        }]
+                    },
+                    callback: async (response) => {
+                        await handlePaymentSuccess(response);
+                    },
+                    onClose: () => {
+                        console.log('Payment window closed');
+                    }
+                });
 
-const paystackPayment = new PaystackPayment();
-const paymentWorkflow = new PaymentWorkflow();
+                handler.openIframe();
+            } catch (error) {
+                console.error('Payment error:', error);
+                showToast('Payment failed to initialize', 'error');
+            }
+        }
 
-// Export for use in main app
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    PaystackPayment,
-    PaymentWorkflow,
-    paystackPayment,
-    paymentWorkflow,
-    PAYSTACK_CONFIG
-  };
-}
+        async function handlePaymentSuccess(response) {
+            try {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
+
+                const { data, error } = await supabase
+                    .from('subscriptions')
+                    .insert([{
+                        user_id: currentUser.id,
+                        status: 'active',
+                        amount: 300.00,
+                        currency: 'KES',
+                        start_date: startDate.toISOString(),
+                        end_date: endDate.toISOString(),
+                        paystack_reference: response.reference
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                await supabase.from('payment_history').insert([{
+                    user_id: currentUser.id,
+                    subscription_id: data.id,
+                    amount: 300.00,
+                    currency: 'KES',
+                    status: 'successful',
+                    paystack_reference: response.reference,
+                    paid_at: new Date().toISOString()
+                }]);
+
+                userSubscription = data;
+                updateUserUI();
+                closePaymentModal();
+                showToast('🎉 Subscription activated! Enjoy unlimited reading!', 'success');
+            } catch (error) {
+                console.error('Subscription creation error:', error);
+                showToast('Payment successful but subscription activation failed. Please contact support.', 'error');
+            }
+        }
+
+        // =============================================================================
+        // MODAL CONTROLS
+        // =============================================================================
+        function showPaymentModal() {
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+        }
+
+        function showAuthModal(mode = 'login') {
+            isAuthModeSignup = mode === 'signup';
+            
+            document.getElementById('authTitle').textContent = isAuthModeSignup ? 'Create Account' : 'Sign In';
+            document.getElementById('authSubmitBtn').textContent = isAuthModeSignup ? 'Sign Up' : 'Sign In';
+            document.getElementById('nameGroup').style.display = isAuthModeSignup ? 'flex' : 'none';
+            document.getElementById('authSwitchText').textContent = isAuthModeSignup ? 'Already have an account? ' : "Don't have an account? ";
+            document.getElementById('authSwitchLink').textContent = isAuthModeSignup ? 'Sign In' : 'Sign Up';
+            
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authForm').reset();
+        }
+
+        function openPDFReader(pdfUrl) {
+            document.getElementById('pdfViewer').src = pdfUrl;
+            document.getElementById('readerModal').classList.add('active');
+        }
+
+        function closePDFReader() {
+            document.getElementById('readerModal').classList.remove('active');
+            document.getElementById('pdfViewer').src = '';
+        }
+
+        // =============================================================================
+        // UI HELPERS
+        // =============================================================================
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // =============================================================================
+        // EVENT LISTENERS
+        // =============================================================================
+        document.getElementById('loginBtn').addEventListener('click', () => showAuthModal('login'));
+        document.getElementById('signupBtn').addEventListener('click', () => showAuthModal('signup'));
+        document.getElementById('subscribeBtn').addEventListener('click', processPayment);
+        document.getElementById('authForm').addEventListener('submit', handleAuth);
+        
+        document.getElementById('authSwitchLink').addEventListener('click', () => {
+            isAuthModeSignup = !isAuthModeSignup;
+            showAuthModal(isAuthModeSignup ? 'signup' : 'login');
+        });
+
+        // Listen for auth state changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN') {
+                currentUser = session.user;
+                checkSubscriptionStatus().then(() => updateUserUI());
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                userSubscription = null;
+            }
+        });
+
+        // =============================================================================
+        // SERVICE WORKER
+        // =============================================================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed'));
+        }
+
+        // =============================================================================
+        // START APP
+        // =============================================================================
+        initApp();
