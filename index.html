@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="ODL Digital Library - Premium literary fiction eBooks">
+    <title>ODL Digital Library</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icons/icon-192x192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6C63FF;
+            --primary-dark: #5548E8;
+            --secondary: #FF6B6B;
+            --dark: #1a1a2e;
+            --dark-light: #16213e;
+            --light: #f4f4f9;
+            --text-light: #e0e0e0;
+            --shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--dark-light) 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(108, 99, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-light);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .subscription-badge {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: var(--dark);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, white, var(--text-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            opacity: 0.8;
+        }
+
+        /* Book Grid */
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .book-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .book-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(108, 99, 255, 0.3);
+            border-color: var(--primary);
+        }
+
+        .book-cover {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: white;
+        }
+
+        .book-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-info {
+            padding: 1.5rem;
+        }
+
+        .book-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+
+        .book-author {
+            color: var(--primary);
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .book-description {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            opacity: 0.7;
+            line-height: 1.5;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--primary);
+            animation: slideIn 0.3s ease;
+            position: relative;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .modal-header h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 1rem 0;
+        }
+
+        .modal-features {
+            list-style: none;
+            margin: 2rem 0;
+        }
+
+        .modal-features li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-features li:before {
+            content: "✓";
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--text-light);
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .close-modal:hover {
+            opacity: 1;
+        }
+
+        /* Auth Form */
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .form-group input {
+            padding: 0.75rem;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .auth-switch a {
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            font-size: 1.2rem;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--dark-light);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            box-shadow: var(--shadow);
+            z-index: 2000;
+            animation: slideInRight 0.3s ease;
+            max-width: 400px;
+        }
+
+        .toast.success {
+            border-left-color: #4CAF50;
+        }
+
+        .toast.error {
+            border-left-color: #f44336;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .books-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+
+            .book-cover {
+                height: 220px;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">📚 ODL Library</div>
+            <div class="user-actions" id="userActions">
+                <button class="btn btn-primary" id="loginBtn">Sign In</button>
+                <button class="btn btn-secondary" id="signupBtn">Sign Up</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <section class="hero">
+            <h1>Your Literary Universe Awaits</h1>
+            <p>Access premium eBooks with unlimited reading for just Ksh 300/month</p>
+        </section>
+
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <p>Loading your library...</p>
+        </div>
+
+        <section class="books-grid" id="booksGrid">
+            <!-- Books will be dynamically loaded here -->
+        </section>
+    </main>
+
+    <!-- Payment Modal -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closePaymentModal()">×</button>
+            <div class="modal-header">
+                <h2>Subscribe to ODL</h2>
+                <div class="modal-price">Ksh 300<span style="font-size: 1rem; color: var(--text-light);">/month</span></div>
+            </div>
+            <ul class="modal-features">
+                <li>Unlimited access to all eBooks</li>
+                <li>Read offline with PWA</li>
+                <li>New books added regularly</li>
+                <li>Cancel anytime</li>
+            </ul>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closePaymentModal()">Maybe Later</button>
+                <button class="btn btn-primary" id="subscribeBtn">Subscribe Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal (Login/Signup) -->
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeAuthModal()">×</button>
+            <div class="modal-header">
+                <h2 id="authTitle">Sign In</h2>
+            </div>
+            <form class="auth-form" id="authForm">
+                <div class="form-group" id="nameGroup" style="display: none;">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="authSubmitBtn">Sign In</button>
+            </form>
+            <div class="auth-switch">
+                <span id="authSwitchText">Don't have an account? </span>
+                <a id="authSwitchLink">Sign Up</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Reader Modal -->
+    <div class="modal" id="readerModal">
+        <div class="modal-content" style="max-width: 95%; max-height: 95vh; padding: 0;">
+            <button class="close-modal" onclick="closePDFReader()" style="z-index: 10; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 8px;">×</button>
+            <iframe id="pdfViewer" style="width: 100%; height: 90vh; border: none; border-radius: 16px;"></iframe>
+        </div>
+    </div>
+
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+
+    <!-- Configuration Files (Create these in /config/ folder) -->
+    <script>
+        // Inline configuration for demo - Move to separate files in production
+        
+        // =============================================================================
+        // SUPABASE CONFIG (Replace with your credentials)
+        // =============================================================================
+        const SUPABASE_CONFIG = {
+            url: 'https://your-project.supabase.co',
+            anonKey: 'your-anon-key-here'
+        };
+
+        const supabase = window.supabase.createClient(
+            SUPABASE_CONFIG.url,
+            SUPABASE_CONFIG.anonKey
+        );
+
+        // =============================================================================
+        // PAYSTACK CONFIG (Replace with your credentials)
+        // =============================================================================
+        const PAYSTACK_CONFIG = {
+            publicKey: 'pk_test_your_public_key',
+            amount: 30000, // 300 KES in kobo
+            currency: 'KES'
+        };
+
+        // =============================================================================
+        // APP STATE
+        // =============================================================================
+        let currentUser = null;
+        let userSubscription = null;
+        let books = [];
+        let isAuthModeSignup = false;
+
+        // =============================================================================
+        // INITIALIZATION
+        // =============================================================================
+        async function initApp() {
+            try {
+                await checkUserAuth();
+                await loadBooks();
+            } catch (error) {
+                console.error('Init error:', error);
+                showToast('Failed to initialize app', 'error');
+            }
+        }
+
+        // =============================================================================
+        // AUTHENTICATION
+        // =============================================================================
+        async function checkUserAuth() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (session) {
+                    currentUser = session.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
+
+        async function checkSubscriptionStatus() {
+            if (!currentUser) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('status', 'active')
+                    .gte('end_date', new Date().toISOString())
+                    .single();
+
+                if (data) {
+                    userSubscription = data;
+                }
+            } catch (error) {
+                console.error('Subscription check error:', error);
+            }
+        }
+
+        function updateUserUI() {
+            const userActions = document.getElementById('userActions');
+            
+            if (currentUser) {
+                const userName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+                
+                if (userSubscription) {
+                    userActions.innerHTML = `
+                        <div class="subscription-badge">⭐ Premium Member</div>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                } else {
+                    userActions.innerHTML = `
+                        <span style="margin-right: 1rem;">Hi, ${userName}!</span>
+                        <button class="btn btn-primary" onclick="showPaymentModal()">Subscribe</button>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                }
+            }
+        }
+
+        async function handleAuth(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const fullName = document.getElementById('fullName').value;
+
+            try {
+                if (isAuthModeSignup) {
+                    const { data, error } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: { full_name: fullName }
+                        }
+                    });
+
+                    if (error) throw error;
+
+                    if (data.user) {
+                        await supabase.from('profiles').insert([{
+                            id: data.user.id,
+                            email: email,
+                            full_name: fullName
+                        }]);
+                    }
+
+                    showToast('Account created! Please check your email to verify.', 'success');
+                    closeAuthModal();
+                } else {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+
+                    if (error) throw error;
+
+                    currentUser = data.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                    closeAuthModal();
+                    showToast('Welcome back!', 'success');
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function logout() {
+            try {
+                await supabase.auth.signOut();
+                currentUser = null;
+                userSubscription = null;
+                location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Logout failed', 'error');
+            }
+        }
+
+        // =============================================================================
+        // BOOKS
+        // =============================================================================
+        async function loadBooks() {
+            try {
+                const { data, error } = await supabase
+                    .from('books')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                books = data || [];
+                renderBooks();
+                document.getElementById('loadingState').style.display = 'none';
+            } catch (error) {
+                console.error('Load books error:', error);
+                
+                // Fallback to sample books if database is empty
+                books = [
+                    {
+                        id: '1',
+                        title: 'The Midnight Chronicles',
+                        author: 'Your Name',
+                        description: 'A gripping tale of mystery and adventure.',
+                        cover_url: '',
+                        pdf_url: 'https://drive.google.com/file/d/YOUR_FILE_ID/preview'
+                    }
+                ];
+                renderBooks();
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
+
+        function renderBooks() {
+            const grid = document.getElementById('booksGrid');
+            
+            if (books.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No books available yet. Check back soon!</p>';
+                return;
+            }
+
+            grid.innerHTML = books.map(book => `
+                <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
+                    <div class="book-cover">
+                        ${book.cover_url ? `<img src="${book.cover_url}" alt="${book.title}">` : '📖'}
+                    </div>
+                    <div class="book-info">
+                        <div class="book-title">${book.title}</div>
+                        <div class="book-author">by ${book.author}</div>
+                        <div class="book-description">${book.description || 'A captivating story awaits...'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openBook(book) {
+            if (!currentUser) {
+                showToast('Please sign in to read books', 'error');
+                showAuthModal('login');
+                return;
+            }
+
+            if (!userSubscription) {
+                showPaymentModal();
+                return;
+            }
+
+            openPDFReader(book.pdf_url);
+        }
+
+        // =============================================================================
+        // PAYMENT
+        // =============================================================================
+        async function processPayment() {
+            if (!currentUser) {
+                showToast('Please sign in first', 'error');
+                showAuthModal('login');
+                return;
+            }
+
+            try {
+                const handler = PaystackPop.setup({
+                    key: PAYSTACK_CONFIG.publicKey,
+                    email: currentUser.email,
+                    amount: PAYSTACK_CONFIG.amount,
+                    currency: PAYSTACK_CONFIG.currency,
+                    ref: `ODL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    metadata: {
+                        custom_fields: [{
+                            display_name: "User ID",
+                            variable_name: "user_id",
+                            value: currentUser.id
+                        }]
+                    },
+                    callback: async (response) => {
+                        await handlePaymentSuccess(response);
+                    },
+                    onClose: () => {
+                        console.log('Payment window closed');
+                    }
+                });
+
+                handler.openIframe();
+            } catch (error) {
+                console.error('Payment error:', error);
+                showToast('Payment failed to initialize', 'error');
+            }
+        }
+
+        async function handlePaymentSuccess(response) {
+            try {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
+
+                const { data, error } = await supabase
+                    .from('subscriptions')
+                    .insert([{
+                        user_id: currentUser.id,
+                        status: 'active',
+                        amount: 300.00,
+                        currency: 'KES',
+                        start_date: startDate.toISOString(),
+                        end_date: endDate.toISOString(),
+                        paystack_reference: response.reference
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                await supabase.from('payment_history').insert([{
+                    user_id: currentUser.id,
+                    subscription_id: data.id,
+                    amount: 300.00,
+                    currency: 'KES',
+                    status: 'successful',
+                    paystack_reference: response.reference,
+                    paid_at: new Date().toISOString()
+                }]);
+
+                userSubscription = data;
+                updateUserUI();
+                closePaymentModal();
+                showToast('🎉 Subscription activated! Enjoy unlimited reading!', 'success');
+            } catch (error) {
+                console.error('Subscription creation error:', error);
+                showToast('Payment successful but subscription activation failed. Please contact support.', 'error');
+            }
+        }
+
+        // =============================================================================
+        // MODAL CONTROLS
+        // =============================================================================
+        function showPaymentModal() {
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+        }
+
+        function showAuthModal(mode = 'login') {
+            isAuthModeSignup = mode === 'signup';
+            
+            document.getElementById('authTitle').textContent = isAuthModeSignup ? 'Create Account' : 'Sign In';
+            document.getElementById('authSubmitBtn').textContent = isAuthModeSignup ? 'Sign Up' : 'Sign In';
+            document.getElementById('nameGroup').style.display = isAuthModeSignup ? 'flex' : 'none';
+            document.getElementById('authSwitchText').textContent = isAuthModeSignup ? 'Already have an account? ' : "Don't have an account? ";
+            document.getElementById('authSwitchLink').textContent = isAuthModeSignup ? 'Sign In' : 'Sign Up';
+            
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authForm').reset();
+        }
+
+        function openPDFReader(pdfUrl) {
+            document.getElementById('pdfViewer').src = pdfUrl;
+            document.getElementById('readerModal').classList.add('active');
+        }
+
+        function closePDFReader() {
+            document.getElementById('readerModal').classList.remove('active');
+            document.getElementById('pdfViewer').src = '';
+        }
+
+        // =============================================================================
+        // UI HELPERS
+        // =============================================================================
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // =============================================================================
+        // EVENT LISTENERS
+        // =============================================================================
+        document.getElementById('loginBtn').addEventListener('click', () => showAuthModal('login'));
+        document.getElementById('signupBtn').addEventListener('click', () => showAuthModal('signup'));
+        document.getElementById('subscribeBtn').addEventListener('click', processPayment);
+        document.getElementById('authForm').addEventListener('submit', handleAuth);
+        
+        document.getElementById('authSwitchLink').addEventListener('click', () => {
+            isAuthModeSignup = !isAuthModeSignup;
+            showAuthModal(isAuthModeSignup ? 'signup' : 'login');
+        });
+
+        // Listen for auth state changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN') {
+                currentUser = session.user;
+                checkSubscriptionStatus().then(() => updateUserUI());
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                userSubscription = null;
+            }
+        });
+
+        // =============================================================================
+        // SERVICE WORKER
+        // =============================================================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed'));
+        }
+
+        // =============================================================================
+        // START APP
+        // =============================================================================
+        initApp();
+    </script>
+</body>
+</html>
