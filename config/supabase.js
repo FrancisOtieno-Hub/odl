@@ -1,614 +1,401 @@
-// Supabase Configuration and Integration for ODL Library
-// File: config/supabase.js
+ const SUPABASE_CONFIG = {
+            url: 'https://vryzwufhpooxgfholuqk.supabase.co',
+            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyeXp3dWZocG9veGdmaG9sdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzQxMjYsImV4cCI6MjA4NDIxMDEyNn0.QT9ZI-ckTK3oMgzPvJlqFKzZFNFNkvbVbGTncxop__A'
+        };
 
-// =============================================================================
-// SUPABASE SETUP INSTRUCTIONS
-// =============================================================================
-/*
-1. Go to https://supabase.com and create a free account
-2. Create a new project (choose a region close to Kenya - e.g., Singapore)
-3. Wait for project setup (2-3 minutes)
-4. Get your credentials from Settings > API:
-   - Project URL (SUPABASE_URL)
-   - anon/public key (SUPABASE_ANON_KEY)
-5. Replace the placeholders below with your actual credentials
-*/
+        const supabase = window.supabase.createClient(
+            SUPABASE_CONFIG.url,
+            SUPABASE_CONFIG.anonKey
+        );
 
-// =============================================================================
-// CONFIGURATION
-// =============================================================================
+        // =============================================================================
+        // PAYSTACK CONFIG (Replace with your credentials)
+        // =============================================================================
+        const PAYSTACK_CONFIG = {
+            publicKey: 'pk_test_your_public_key',
+            amount: 30000, // 300 KES in kobo
+            currency: 'KES'
+        };
 
-const SUPABASE_CONFIG = {
-  url: 'https://vryzwufhpooxgfholuqk.supabase.co', // Replace with your Supabase project URL
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyeXp3dWZocG9veGdmaG9sdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzQxMjYsImV4cCI6MjA4NDIxMDEyNn0.QT9ZI-ckTK3oMgzPvJlqFKzZFNFNkvbVbGTncxop__A' // Replace with your anon/public key
-};
+        // =============================================================================
+        // APP STATE
+        // =============================================================================
+        let currentUser = null;
+        let userSubscription = null;
+        let books = [];
+        let isAuthModeSignup = false;
 
-// Initialize Supabase client
-const supabase = window.supabase.createClient(
-  SUPABASE_CONFIG.url,
-  SUPABASE_CONFIG.anonKey
-);
-
-// =============================================================================
-// DATABASE SCHEMA
-// =============================================================================
-/*
-Run these SQL commands in Supabase SQL Editor to create your tables:
-
--- Users table (extends Supabase auth.users)
-CREATE TABLE public.profiles (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  full_name TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Subscriptions table
-CREATE TABLE public.subscriptions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK (status IN ('active', 'expired', 'cancelled')),
-  amount DECIMAL(10, 2) NOT NULL DEFAULT 300.00,
-  currency TEXT DEFAULT 'KES',
-  start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  end_date TIMESTAMP WITH TIME ZONE,
-  paystack_reference TEXT UNIQUE,
-  paystack_subscription_code TEXT,
-  auto_renew BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Books table
-CREATE TABLE public.books (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title TEXT NOT NULL,
-  author TEXT NOT NULL,
-  description TEXT,
-  cover_url TEXT,
-  pdf_url TEXT NOT NULL,
-  google_drive_id TEXT,
-  category TEXT,
-  published_date DATE,
-  page_count INTEGER,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Reading Progress table
-CREATE TABLE public.reading_progress (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  book_id UUID REFERENCES public.books(id) ON DELETE CASCADE,
-  current_page INTEGER DEFAULT 0,
-  total_pages INTEGER,
-  progress_percentage DECIMAL(5, 2),
-  last_read_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, book_id)
-);
-
--- Payment History table
-CREATE TABLE public.payment_history (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-  subscription_id UUID REFERENCES public.subscriptions(id),
-  amount DECIMAL(10, 2) NOT NULL,
-  currency TEXT DEFAULT 'KES',
-  status TEXT NOT NULL CHECK (status IN ('pending', 'successful', 'failed')),
-  paystack_reference TEXT UNIQUE,
-  payment_method TEXT,
-  paid_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Enable Row Level Security (RLS)
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.books ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.payment_history ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-
--- Profiles: Users can read and update their own profile
-CREATE POLICY "Users can view own profile" ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id);
-
--- Subscriptions: Users can view their own subscriptions
-CREATE POLICY "Users can view own subscriptions" ON public.subscriptions
-  FOR SELECT USING (auth.uid() = user_id);
-
--- Books: Everyone can view active books
-CREATE POLICY "Anyone can view active books" ON public.books
-  FOR SELECT USING (is_active = true);
-
--- Reading Progress: Users can manage their own progress
-CREATE POLICY "Users can view own progress" ON public.reading_progress
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own progress" ON public.reading_progress
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own progress" ON public.reading_progress
-  FOR UPDATE USING (auth.uid() = user_id);
-
--- Payment History: Users can view their own payments
-CREATE POLICY "Users can view own payments" ON public.payment_history
-  FOR SELECT USING (auth.uid() = user_id);
-
--- Create indexes for better performance
-CREATE INDEX idx_subscriptions_user_id ON public.subscriptions(user_id);
-CREATE INDEX idx_subscriptions_status ON public.subscriptions(status);
-CREATE INDEX idx_reading_progress_user_id ON public.reading_progress(user_id);
-CREATE INDEX idx_payment_history_user_id ON public.payment_history(user_id);
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Triggers for updated_at
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON public.subscriptions
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_books_updated_at BEFORE UPDATE ON public.books
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-*/
-
-// =============================================================================
-// AUTHENTICATION FUNCTIONS
-// =============================================================================
-
-class ODLAuth {
-  // Sign up new user
-  async signUp(email, password, fullName) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          data: {
-            full_name: fullName
-          }
+        // =============================================================================
+        // INITIALIZATION
+        // =============================================================================
+        async function initApp() {
+            try {
+                await checkUserAuth();
+                await loadBooks();
+            } catch (error) {
+                console.error('Init error:', error);
+                showToast('Failed to initialize app', 'error');
+            }
         }
-      });
 
-      if (error) throw error;
+        // =============================================================================
+        // AUTHENTICATION
+        // =============================================================================
+        async function checkUserAuth() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (session) {
+                    currentUser = session.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
 
-      // Create profile
-      if (data.user) {
-        await this.createProfile(data.user.id, email, fullName);
-      }
+        async function checkSubscriptionStatus() {
+            if (!currentUser) return;
 
-      return { success: true, user: data.user };
-    } catch (error) {
-      console.error('Sign up error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+            try {
+                const { data, error } = await supabase
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('status', 'active')
+                    .gte('end_date', new Date().toISOString())
+                    .single();
 
-  // Create user profile
-  async createProfile(userId, email, fullName) {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: userId,
-            email: email,
-            full_name: fullName
-          }
-        ]);
+                if (data) {
+                    userSubscription = data;
+                }
+            } catch (error) {
+                console.error('Subscription check error:', error);
+            }
+        }
 
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Profile creation error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+        function updateUserUI() {
+            const userActions = document.getElementById('userActions');
+            
+            if (currentUser) {
+                const userName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+                
+                if (userSubscription) {
+                    userActions.innerHTML = `
+                        <div class="subscription-badge">⭐ Premium Member</div>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                } else {
+                    userActions.innerHTML = `
+                        <span style="margin-right: 1rem;">Hi, ${userName}!</span>
+                        <button class="btn btn-primary" onclick="showPaymentModal()">Subscribe</button>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                }
+            }
+        }
 
-  // Sign in existing user
-  async signIn(email, password) {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
+        async function handleAuth(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const fullName = document.getElementById('fullName').value;
 
-      if (error) throw error;
+            try {
+                if (isAuthModeSignup) {
+                    const { data, error } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: { full_name: fullName }
+                        }
+                    });
 
-      return { success: true, user: data.user, session: data.session };
-    } catch (error) {
-      console.error('Sign in error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+                    if (error) throw error;
 
-  // Sign out
-  async signOut() {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Sign out error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+                    if (data.user) {
+                        await supabase.from('profiles').insert([{
+                            id: data.user.id,
+                            email: email,
+                            full_name: fullName
+                        }]);
+                    }
 
-  // Get current user
-  async getCurrentUser() {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) throw error;
-      return user;
-    } catch (error) {
-      console.error('Get user error:', error);
-      return null;
-    }
-  }
+                    showToast('Account created! Please check your email to verify.', 'success');
+                    closeAuthModal();
+                } else {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
 
-  // Get current session
-  async getSession() {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      return session;
-    } catch (error) {
-      console.error('Get session error:', error);
-      return null;
-    }
-  }
+                    if (error) throw error;
 
-  // Reset password
-  async resetPassword(email) {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
+                    currentUser = data.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                    closeAuthModal();
+                    showToast('Welcome back!', 'success');
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast(error.message, 'error');
+            }
+        }
 
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      console.error('Password reset error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+        async function logout() {
+            try {
+                await supabase.auth.signOut();
+                currentUser = null;
+                userSubscription = null;
+                location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Logout failed', 'error');
+            }
+        }
 
-  // Listen to auth state changes
-  onAuthStateChange(callback) {
-    return supabase.auth.onAuthStateChange((event, session) => {
-      callback(event, session);
-    });
-  }
-}
+        // =============================================================================
+        // BOOKS
+        // =============================================================================
+        async function loadBooks() {
+            try {
+                const { data, error } = await supabase
+                    .from('books')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false });
 
-// =============================================================================
-// SUBSCRIPTION FUNCTIONS
-// =============================================================================
+                if (error) throw error;
 
-class ODLSubscription {
-  // Check if user has active subscription
-  async hasActiveSubscription(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .gte('end_date', new Date().toISOString())
-        .single();
+                books = data || [];
+                renderBooks();
+                document.getElementById('loadingState').style.display = 'none';
+            } catch (error) {
+                console.error('Load books error:', error);
+                
+                // Fallback to sample books if database is empty
+                books = [
+                    {
+                        id: '1',
+                        title: 'The Midnight Chronicles',
+                        author: 'Your Name',
+                        description: 'A gripping tale of mystery and adventure.',
+                        cover_url: '',
+                        pdf_url: 'https://drive.google.com/file/d/YOUR_FILE_ID/preview'
+                    }
+                ];
+                renderBooks();
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
 
-      if (error && error.code !== 'PGRST116') throw error;
+        function renderBooks() {
+            const grid = document.getElementById('booksGrid');
+            
+            if (books.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No books available yet. Check back soon!</p>';
+                return;
+            }
 
-      return { 
-        isActive: !!data, 
-        subscription: data 
-      };
-    } catch (error) {
-      console.error('Check subscription error:', error);
-      return { isActive: false, subscription: null };
-    }
-  }
+            grid.innerHTML = books.map(book => `
+                <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
+                    <div class="book-cover">
+                        ${book.cover_url ? `<img src="${book.cover_url}" alt="${book.title}">` : '📖'}
+                    </div>
+                    <div class="book-info">
+                        <div class="book-title">${book.title}</div>
+                        <div class="book-author">by ${book.author}</div>
+                        <div class="book-description">${book.description || 'A captivating story awaits...'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-  // Create new subscription
-  async createSubscription(userId, paystackReference, paystackSubscriptionCode) {
-    try {
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1); // 1 month subscription
+        function openBook(book) {
+            if (!currentUser) {
+                showToast('Please sign in to read books', 'error');
+                showAuthModal('login');
+                return;
+            }
 
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .insert([
-          {
-            user_id: userId,
-            status: 'active',
-            amount: 300.00,
-            currency: 'KES',
-            start_date: startDate.toISOString(),
-            end_date: endDate.toISOString(),
-            paystack_reference: paystackReference,
-            paystack_subscription_code: paystackSubscriptionCode
-          }
-        ])
-        .select()
-        .single();
+            if (!userSubscription) {
+                showPaymentModal();
+                return;
+            }
 
-      if (error) throw error;
+            openPDFReader(book.pdf_url);
+        }
 
-      return { success: true, subscription: data };
-    } catch (error) {
-      console.error('Create subscription error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+        // =============================================================================
+        // PAYMENT
+        // =============================================================================
+        async function processPayment() {
+            if (!currentUser) {
+                showToast('Please sign in first', 'error');
+                showAuthModal('login');
+                return;
+            }
 
-  // Get user subscriptions
-  async getUserSubscriptions(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+            try {
+                const handler = PaystackPop.setup({
+                    key: PAYSTACK_CONFIG.publicKey,
+                    email: currentUser.email,
+                    amount: PAYSTACK_CONFIG.amount,
+                    currency: PAYSTACK_CONFIG.currency,
+                    ref: `ODL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    metadata: {
+                        custom_fields: [{
+                            display_name: "User ID",
+                            variable_name: "user_id",
+                            value: currentUser.id
+                        }]
+                    },
+                    callback: async (response) => {
+                        await handlePaymentSuccess(response);
+                    },
+                    onClose: () => {
+                        console.log('Payment window closed');
+                    }
+                });
 
-      if (error) throw error;
+                handler.openIframe();
+            } catch (error) {
+                console.error('Payment error:', error);
+                showToast('Payment failed to initialize', 'error');
+            }
+        }
 
-      return { success: true, subscriptions: data };
-    } catch (error) {
-      console.error('Get subscriptions error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+        async function handlePaymentSuccess(response) {
+            try {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
 
-  // Cancel subscription
-  async cancelSubscription(subscriptionId) {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .update({ 
-          status: 'cancelled',
-          auto_renew: false
-        })
-        .eq('id', subscriptionId)
-        .select()
-        .single();
+                const { data, error } = await supabase
+                    .from('subscriptions')
+                    .insert([{
+                        user_id: currentUser.id,
+                        status: 'active',
+                        amount: 300.00,
+                        currency: 'KES',
+                        start_date: startDate.toISOString(),
+                        end_date: endDate.toISOString(),
+                        paystack_reference: response.reference
+                    }])
+                    .select()
+                    .single();
 
-      if (error) throw error;
+                if (error) throw error;
 
-      return { success: true, subscription: data };
-    } catch (error) {
-      console.error('Cancel subscription error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-}
+                await supabase.from('payment_history').insert([{
+                    user_id: currentUser.id,
+                    subscription_id: data.id,
+                    amount: 300.00,
+                    currency: 'KES',
+                    status: 'successful',
+                    paystack_reference: response.reference,
+                    paid_at: new Date().toISOString()
+                }]);
 
-// =============================================================================
-// BOOKS FUNCTIONS
-// =============================================================================
+                userSubscription = data;
+                updateUserUI();
+                closePaymentModal();
+                showToast('🎉 Subscription activated! Enjoy unlimited reading!', 'success');
+            } catch (error) {
+                console.error('Subscription creation error:', error);
+                showToast('Payment successful but subscription activation failed. Please contact support.', 'error');
+            }
+        }
 
-class ODLBooks {
-  // Get all active books
-  async getAllBooks() {
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        // =============================================================================
+        // MODAL CONTROLS
+        // =============================================================================
+        function showPaymentModal() {
+            document.getElementById('paymentModal').classList.add('active');
+        }
 
-      if (error) throw error;
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+        }
 
-      return { success: true, books: data };
-    } catch (error) {
-      console.error('Get books error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+        function showAuthModal(mode = 'login') {
+            isAuthModeSignup = mode === 'signup';
+            
+            document.getElementById('authTitle').textContent = isAuthModeSignup ? 'Create Account' : 'Sign In';
+            document.getElementById('authSubmitBtn').textContent = isAuthModeSignup ? 'Sign Up' : 'Sign In';
+            document.getElementById('nameGroup').style.display = isAuthModeSignup ? 'flex' : 'none';
+            document.getElementById('authSwitchText').textContent = isAuthModeSignup ? 'Already have an account? ' : "Don't have an account? ";
+            document.getElementById('authSwitchLink').textContent = isAuthModeSignup ? 'Sign In' : 'Sign Up';
+            
+            document.getElementById('authModal').classList.add('active');
+        }
 
-  // Get single book
-  async getBook(bookId) {
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('*')
-        .eq('id', bookId)
-        .single();
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authForm').reset();
+        }
 
-      if (error) throw error;
+        function openPDFReader(pdfUrl) {
+            document.getElementById('pdfViewer').src = pdfUrl;
+            document.getElementById('readerModal').classList.add('active');
+        }
 
-      return { success: true, book: data };
-    } catch (error) {
-      console.error('Get book error:', error);
-      return { success: false, error: error.message };
-    }
-  }
+        function closePDFReader() {
+            document.getElementById('readerModal').classList.remove('active');
+            document.getElementById('pdfViewer').src = '';
+        }
 
-  // Add new book (admin only - you'll add books manually or via admin panel)
-  async addBook(bookData) {
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .insert([bookData])
-        .select()
-        .single();
+        // =============================================================================
+        // UI HELPERS
+        // =============================================================================
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
 
-      if (error) throw error;
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
 
-      return { success: true, book: data };
-    } catch (error) {
-      console.error('Add book error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-}
+        // =============================================================================
+        // EVENT LISTENERS
+        // =============================================================================
+        document.getElementById('loginBtn').addEventListener('click', () => showAuthModal('login'));
+        document.getElementById('signupBtn').addEventListener('click', () => showAuthModal('signup'));
+        document.getElementById('subscribeBtn').addEventListener('click', processPayment);
+        document.getElementById('authForm').addEventListener('submit', handleAuth);
+        
+        document.getElementById('authSwitchLink').addEventListener('click', () => {
+            isAuthModeSignup = !isAuthModeSignup;
+            showAuthModal(isAuthModeSignup ? 'signup' : 'login');
+        });
 
-// =============================================================================
-// READING PROGRESS FUNCTIONS
-// =============================================================================
+        // Listen for auth state changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN') {
+                currentUser = session.user;
+                checkSubscriptionStatus().then(() => updateUserUI());
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                userSubscription = null;
+            }
+        });
 
-class ODLProgress {
-  // Save reading progress
-  async saveProgress(userId, bookId, currentPage, totalPages) {
-    try {
-      const percentage = (currentPage / totalPages) * 100;
+        // =============================================================================
+        // SERVICE WORKER
+        // =============================================================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed'));
+        }
 
-      const { data, error } = await supabase
-        .from('reading_progress')
-        .upsert([
-          {
-            user_id: userId,
-            book_id: bookId,
-            current_page: currentPage,
-            total_pages: totalPages,
-            progress_percentage: percentage.toFixed(2),
-            last_read_at: new Date().toISOString()
-          }
-        ], { onConflict: 'user_id,book_id' })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, progress: data };
-    } catch (error) {
-      console.error('Save progress error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Get reading progress for a book
-  async getProgress(userId, bookId) {
-    try {
-      const { data, error } = await supabase
-        .from('reading_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('book_id', bookId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-
-      return { success: true, progress: data };
-    } catch (error) {
-      console.error('Get progress error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Get all user progress
-  async getUserProgress(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('reading_progress')
-        .select(`
-          *,
-          books (
-            id,
-            title,
-            author,
-            cover_url
-          )
-        `)
-        .eq('user_id', userId)
-        .order('last_read_at', { ascending: false });
-
-      if (error) throw error;
-
-      return { success: true, progress: data };
-    } catch (error) {
-      console.error('Get user progress error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-}
-
-// =============================================================================
-// PAYMENT HISTORY FUNCTIONS
-// =============================================================================
-
-class ODLPayments {
-  // Record payment
-  async recordPayment(userId, subscriptionId, amount, paystackReference, status) {
-    try {
-      const { data, error } = await supabase
-        .from('payment_history')
-        .insert([
-          {
-            user_id: userId,
-            subscription_id: subscriptionId,
-            amount: amount,
-            currency: 'KES',
-            status: status,
-            paystack_reference: paystackReference,
-            paid_at: status === 'successful' ? new Date().toISOString() : null
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, payment: data };
-    } catch (error) {
-      console.error('Record payment error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Get user payment history
-  async getPaymentHistory(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('payment_history')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return { success: true, payments: data };
-    } catch (error) {
-      console.error('Get payment history error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-}
-
-// =============================================================================
-// EXPORT INSTANCES
-// =============================================================================
-
-const odlAuth = new ODLAuth();
-const odlSubscription = new ODLSubscription();
-const odlBooks = new ODLBooks();
-const odlProgress = new ODLProgress();
-const odlPayments = new ODLPayments();
-
-// Export for use in main app
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    supabase,
-    odlAuth,
-    odlSubscription,
-    odlBooks,
-    odlProgress,
-    odlPayments
-  };
-}
+        // =============================================================================
+        // START APP
+        // =============================================================================
+        initApp();
