@@ -519,11 +519,11 @@
         // =============================================================================
         const CONFIG = {
             supabase: {
-                url: 'https://vryzwufhpooxgfholuqk.supabase.co',
-                key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyeXp3dWZocG9veGdmaG9sdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzQxMjYsImV4cCI6MjA4NDIxMDEyNn0.QT9ZI-ckTK3oMgzPvJlqFKzZFNFNkvbVbGTncxop__A'
+                url: 'YOUR_SUPABASE_URL',
+                key: 'YOUR_SUPABASE_ANON_KEY'
             },
             paystack: {
-                publicKey: 'pk_live_cedf130a1a00ac0547eedbbd0d7349e92d15446a',
+                publicKey: 'YOUR_PAYSTACK_PUBLIC_KEY',
                 amount: 30000,
                 currency: 'KES'
             }
@@ -551,19 +551,23 @@
         // INITIALIZATION
         // =============================================================================
         async function initApp() {
+            // Always load demo books first for instant display
+            loadDemoBooks();
+
             try {
                 // Check if Supabase is configured
-                if (!supabaseClient) {
-                    console.warn('Supabase not configured - using demo mode');
-                    loadDemoBooks();
+                if (!supabaseClient || CONFIG.supabase.url === 'YOUR_SUPABASE_URL') {
+                    console.warn('Supabase not configured - staying in demo mode');
+                    showToast('Demo Mode: Configure Supabase to enable full features', 'error');
                     return;
                 }
 
+                // Try to load real data
                 await checkUserAuth();
                 await loadBooks();
             } catch (error) {
                 console.error('Init error:', error);
-                loadDemoBooks();
+                showToast('Using demo mode - check console for errors', 'error');
             }
         }
 
@@ -731,8 +735,8 @@
         // BOOKS
         // =============================================================================
         async function loadBooks() {
-            if (!supabaseClient) {
-                loadDemoBooks();
+            if (!supabaseClient || CONFIG.supabase.url === 'YOUR_SUPABASE_URL') {
+                // Already showing demo books
                 return;
             }
 
@@ -745,17 +749,16 @@
 
                 if (error) throw error;
 
-                books = data && data.length > 0 ? data : [];
-                
-                if (books.length === 0) {
-                    loadDemoBooks();
-                } else {
+                if (data && data.length > 0) {
+                    books = data;
                     renderBooks();
-                    document.getElementById('loadingState').style.display = 'none';
+                    showToast('Books loaded from database!', 'success');
+                } else {
+                    showToast('No books in database - showing demo books', 'error');
                 }
             } catch (error) {
                 console.error('Load books error:', error);
-                loadDemoBooks();
+                showToast('Failed to load books from database', 'error');
             }
         }
 
