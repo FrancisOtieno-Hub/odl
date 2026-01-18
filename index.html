@@ -6,8 +6,6 @@
     <meta name="theme-color" content="#1a1a2e">
     <meta name="description" content="ODL Digital Library - Premium literary fiction eBooks">
     <title>ODL Digital Library</title>
-    <!-- <link rel="manifest" href="/manifest.json"> -->
-    <!-- <link rel="icon" type="image/png" href="/icons/icon-192x192.png"> -->
     <style>
         * {
             margin: 0;
@@ -408,21 +406,17 @@
             .hero h1 {
                 font-size: 2rem;
             }
-
             .books-grid {
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
                 gap: 1rem;
             }
-
             .book-cover {
                 height: 220px;
             }
-
             .header-content {
                 flex-direction: column;
                 gap: 1rem;
             }
-
             .modal-content {
                 width: 95%;
                 padding: 1.5rem;
@@ -430,6 +424,7 @@
         }
     </style>
 </head>
+
 <body>
     <header class="header">
         <div class="header-content">
@@ -455,6 +450,7 @@
         <section class="books-grid" id="booksGrid"></section>
     </main>
 
+    <!-- Payment Modal -->
     <div class="modal" id="paymentModal">
         <div class="modal-content">
             <button class="close-modal" onclick="closePaymentModal()">×</button>
@@ -475,6 +471,7 @@
         </div>
     </div>
 
+    <!-- Auth Modal -->
     <div class="modal" id="authModal">
         <div class="modal-content">
             <button class="close-modal" onclick="closeAuthModal()">×</button>
@@ -503,6 +500,7 @@
         </div>
     </div>
 
+    <!-- PDF Reader Modal -->
     <div class="modal" id="readerModal">
         <div class="modal-content" style="max-width: 95%; max-height: 95vh; padding: 0;">
             <button class="close-modal" onclick="closePDFReader()" style="z-index: 10; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 8px;">×</button>
@@ -510,6 +508,7 @@
         </div>
     </div>
 
+    <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://js.paystack.co/v1/inline.js"></script>
 
@@ -551,23 +550,19 @@
         // INITIALIZATION
         // =============================================================================
         async function initApp() {
-            // Always load demo books first for instant display
+            console.log('Starting ODL Library...');
             loadDemoBooks();
 
             try {
-                // Check if Supabase is configured
                 if (!supabaseClient || CONFIG.supabase.url === 'YOUR_SUPABASE_URL') {
                     console.warn('Supabase not configured - staying in demo mode');
-                    showToast('Demo Mode: Configure Supabase to enable full features', 'error');
                     return;
                 }
 
-                // Try to load real data
                 await checkUserAuth();
                 await loadBooks();
             } catch (error) {
                 console.error('Init error:', error);
-                showToast('Using demo mode - check console for errors', 'error');
             }
         }
 
@@ -600,15 +595,9 @@
                 }
             ];
             
-            // Hide loading and render books
-            const loadingState = document.getElementById('loadingState');
-            if (loadingState) {
-                loadingState.style.display = 'none';
-            }
-            
+            document.getElementById('loadingState').style.display = 'none';
             renderBooks();
             
-            // Show demo mode notification after a brief delay
             setTimeout(() => {
                 showToast('Demo mode - Configure Supabase to enable full features', 'error');
             }, 500);
@@ -747,7 +736,6 @@
         // =============================================================================
         async function loadBooks() {
             if (!supabaseClient || CONFIG.supabase.url === 'YOUR_SUPABASE_URL') {
-                // Already showing demo books
                 return;
             }
 
@@ -996,19 +984,10 @@
         }
 
         // =============================================================================
-        // SERVICE WORKER
-        // =============================================================================
-        // Disabled until manifest and icons are ready
-        /*
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('Service Worker registered'))
-                .catch(err => console.log('Service Worker registration failed'));
-        }
-        */
-
-        // =============================================================================
         // START APP
         // =============================================================================
         console.log('Starting ODL Library...');
         initApp();
+    </script>
+</body>
+</html>
