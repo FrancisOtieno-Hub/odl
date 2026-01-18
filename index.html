@@ -34,7 +34,6 @@
             padding-bottom: 60px;
         }
 
-        /* Header */
         .header {
             background: rgba(26, 26, 46, 0.95);
             backdrop-filter: blur(10px);
@@ -109,7 +108,6 @@
             font-weight: bold;
         }
 
-        /* Main Content */
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -137,7 +135,6 @@
             opacity: 0.8;
         }
 
-        /* Book Grid */
         .books-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -202,7 +199,6 @@
             line-height: 1.5;
         }
 
-        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -307,7 +303,6 @@
             opacity: 1;
         }
 
-        /* Auth Form */
         .auth-form {
             display: flex;
             flex-direction: column;
@@ -355,7 +350,6 @@
             text-decoration: underline;
         }
 
-        /* Loading State */
         .loading {
             text-align: center;
             padding: 3rem;
@@ -376,7 +370,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Toast Notification */
         .toast {
             position: fixed;
             bottom: 2rem;
@@ -411,7 +404,6 @@
             }
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2rem;
@@ -439,7 +431,6 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-content">
             <div class="logo">📚 ODL Library</div>
@@ -450,7 +441,6 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="container">
         <section class="hero">
             <h1>Your Literary Universe Awaits</h1>
@@ -462,12 +452,9 @@
             <p>Loading your library...</p>
         </div>
 
-        <section class="books-grid" id="booksGrid">
-            <!-- Books will be dynamically loaded here -->
-        </section>
+        <section class="books-grid" id="booksGrid"></section>
     </main>
 
-    <!-- Payment Modal -->
     <div class="modal" id="paymentModal">
         <div class="modal-content">
             <button class="close-modal" onclick="closePaymentModal()">×</button>
@@ -488,7 +475,6 @@
         </div>
     </div>
 
-    <!-- Auth Modal (Login/Signup) -->
     <div class="modal" id="authModal">
         <div class="modal-content">
             <button class="close-modal" onclick="closeAuthModal()">×</button>
@@ -517,7 +503,6 @@
         </div>
     </div>
 
-    <!-- PDF Reader Modal -->
     <div class="modal" id="readerModal">
         <div class="modal-content" style="max-width: 95%; max-height: 95vh; padding: 0;">
             <button class="close-modal" onclick="closePDFReader()" style="z-index: 10; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 8px;">×</button>
@@ -525,10 +510,487 @@
         </div>
     </div>
 
-    <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://js.paystack.co/v1/inline.js"></script>
-    <script src="config/supabase.js"></script>
-    <script src="config/paystack.js"></script>
-</body>
-</html>
+
+    <script>
+        // =============================================================================
+        // CONFIGURATION - REPLACE WITH YOUR CREDENTIALS
+        // =============================================================================
+        const CONFIG = {
+            supabase: {
+                url: 'https://vryzwufhpooxgfholuqk.supabase.co',
+                key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyeXp3dWZocG9veGdmaG9sdXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzQxMjYsImV4cCI6MjA4NDIxMDEyNn0.QT9ZI-ckTK3oMgzPvJlqFKzZFNFNkvbVbGTncxop__A'
+            },
+            paystack: {
+                publicKey: 'pk_live_cedf130a1a00ac0547eedbbd0d7349e92d15446a',
+                amount: 30000,
+                currency: 'KES'
+            }
+        };
+
+        // Initialize Supabase
+        let supabaseClient = null;
+        try {
+            if (window.supabase && CONFIG.supabase.url !== 'YOUR_SUPABASE_URL') {
+                supabaseClient = window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.key);
+            }
+        } catch (error) {
+            console.error('Supabase initialization error:', error);
+        }
+
+        // =============================================================================
+        // APP STATE
+        // =============================================================================
+        let currentUser = null;
+        let userSubscription = null;
+        let books = [];
+        let isAuthModeSignup = false;
+
+        // =============================================================================
+        // INITIALIZATION
+        // =============================================================================
+        async function initApp() {
+            try {
+                // Check if Supabase is configured
+                if (!supabaseClient) {
+                    console.warn('Supabase not configured - using demo mode');
+                    loadDemoBooks();
+                    return;
+                }
+
+                await checkUserAuth();
+                await loadBooks();
+            } catch (error) {
+                console.error('Init error:', error);
+                loadDemoBooks();
+            }
+        }
+
+        function loadDemoBooks() {
+            books = [
+                {
+                    id: '1',
+                    title: 'The Midnight Chronicles',
+                    author: 'Your Name',
+                    description: 'A gripping tale of mystery and adventure that will keep you on the edge of your seat.',
+                    cover_url: '',
+                    pdf_url: ''
+                },
+                {
+                    id: '2',
+                    title: 'Echoes of Tomorrow',
+                    author: 'Your Name',
+                    description: 'A thrilling journey through time and space with unforgettable characters.',
+                    cover_url: '',
+                    pdf_url: ''
+                },
+                {
+                    id: '3',
+                    title: 'Shadows in the Rain',
+                    author: 'Your Name',
+                    description: 'A suspenseful story filled with unexpected twists and emotional depth.',
+                    cover_url: '',
+                    pdf_url: ''
+                }
+            ];
+            renderBooks();
+            document.getElementById('loadingState').style.display = 'none';
+            showToast('Demo mode - Configure Supabase to enable full features', 'error');
+        }
+
+        // =============================================================================
+        // AUTHENTICATION
+        // =============================================================================
+        async function checkUserAuth() {
+            if (!supabaseClient) return;
+
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                
+                if (session) {
+                    currentUser = session.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
+
+        async function checkSubscriptionStatus() {
+            if (!currentUser || !supabaseClient) return;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('status', 'active')
+                    .gte('end_date', new Date().toISOString())
+                    .single();
+
+                if (data) {
+                    userSubscription = data;
+                }
+            } catch (error) {
+                console.error('Subscription check error:', error);
+            }
+        }
+
+        function updateUserUI() {
+            const userActions = document.getElementById('userActions');
+            
+            if (currentUser) {
+                const userName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+                
+                if (userSubscription) {
+                    userActions.innerHTML = `
+                        <div class="subscription-badge">⭐ Premium Member</div>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                } else {
+                    userActions.innerHTML = `
+                        <span style="margin-right: 1rem;">Hi, ${userName}!</span>
+                        <button class="btn btn-primary" onclick="showPaymentModal()">Subscribe</button>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    `;
+                }
+            }
+        }
+
+        async function handleAuth(event) {
+            event.preventDefault();
+            
+            if (!supabaseClient) {
+                showToast('Please configure Supabase first', 'error');
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const fullName = document.getElementById('fullName').value;
+
+            try {
+                if (isAuthModeSignup) {
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: { full_name: fullName }
+                        }
+                    });
+
+                    if (error) throw error;
+
+                    if (data.user) {
+                        await supabaseClient.from('profiles').insert([{
+                            id: data.user.id,
+                            email: email,
+                            full_name: fullName
+                        }]);
+                    }
+
+                    showToast('Account created! Please check your email to verify.', 'success');
+                    closeAuthModal();
+                } else {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+
+                    if (error) throw error;
+
+                    currentUser = data.user;
+                    await checkSubscriptionStatus();
+                    updateUserUI();
+                    closeAuthModal();
+                    showToast('Welcome back!', 'success');
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function logout() {
+            if (!supabaseClient) return;
+
+            try {
+                await supabaseClient.auth.signOut();
+                currentUser = null;
+                userSubscription = null;
+                location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Logout failed', 'error');
+            }
+        }
+
+        // =============================================================================
+        // BOOKS
+        // =============================================================================
+        async function loadBooks() {
+            if (!supabaseClient) {
+                loadDemoBooks();
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('books')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                books = data && data.length > 0 ? data : [];
+                
+                if (books.length === 0) {
+                    loadDemoBooks();
+                } else {
+                    renderBooks();
+                    document.getElementById('loadingState').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Load books error:', error);
+                loadDemoBooks();
+            }
+        }
+
+        function renderBooks() {
+            const grid = document.getElementById('booksGrid');
+            
+            if (books.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No books available yet. Check back soon!</p>';
+                return;
+            }
+
+            grid.innerHTML = books.map(book => `
+                <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
+                    <div class="book-cover">
+                        ${book.cover_url ? `<img src="${book.cover_url}" alt="${book.title}">` : '📖'}
+                    </div>
+                    <div class="book-info">
+                        <div class="book-title">${book.title}</div>
+                        <div class="book-author">by ${book.author}</div>
+                        <div class="book-description">${book.description || 'A captivating story awaits...'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openBook(book) {
+            if (!supabaseClient) {
+                showToast('Please configure Supabase to enable reading', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                showToast('Please sign in to read books', 'error');
+                showAuthModal('login');
+                return;
+            }
+
+            if (!userSubscription) {
+                showPaymentModal();
+                return;
+            }
+
+            if (book.pdf_url) {
+                openPDFReader(book.pdf_url);
+            } else {
+                showToast('PDF not available for this book', 'error');
+            }
+        }
+
+        // =============================================================================
+        // PAYMENT
+        // =============================================================================
+        async function processPayment() {
+            if (!supabaseClient) {
+                showToast('Please configure Supabase first', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                showToast('Please sign in first', 'error');
+                showAuthModal('login');
+                return;
+            }
+
+            if (!window.PaystackPop) {
+                showToast('Payment system not loaded', 'error');
+                return;
+            }
+
+            if (CONFIG.paystack.publicKey === 'YOUR_PAYSTACK_PUBLIC_KEY') {
+                showToast('Please configure Paystack first', 'error');
+                return;
+            }
+
+            try {
+                const handler = PaystackPop.setup({
+                    key: CONFIG.paystack.publicKey,
+                    email: currentUser.email,
+                    amount: CONFIG.paystack.amount,
+                    currency: CONFIG.paystack.currency,
+                    ref: `ODL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    metadata: {
+                        custom_fields: [{
+                            display_name: "User ID",
+                            variable_name: "user_id",
+                            value: currentUser.id
+                        }]
+                    },
+                    callback: async (response) => {
+                        await handlePaymentSuccess(response);
+                    },
+                    onClose: () => {
+                        console.log('Payment window closed');
+                    }
+                });
+
+                handler.openIframe();
+            } catch (error) {
+                console.error('Payment error:', error);
+                showToast('Payment failed to initialize', 'error');
+            }
+        }
+
+        async function handlePaymentSuccess(response) {
+            if (!supabaseClient) return;
+
+            try {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
+
+                const { data, error } = await supabaseClient
+                    .from('subscriptions')
+                    .insert([{
+                        user_id: currentUser.id,
+                        status: 'active',
+                        amount: 300.00,
+                        currency: 'KES',
+                        start_date: startDate.toISOString(),
+                        end_date: endDate.toISOString(),
+                        paystack_reference: response.reference
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                await supabaseClient.from('payment_history').insert([{
+                    user_id: currentUser.id,
+                    subscription_id: data.id,
+                    amount: 300.00,
+                    currency: 'KES',
+                    status: 'successful',
+                    paystack_reference: response.reference,
+                    paid_at: new Date().toISOString()
+                }]);
+
+                userSubscription = data;
+                updateUserUI();
+                closePaymentModal();
+                showToast('🎉 Subscription activated! Enjoy unlimited reading!', 'success');
+            } catch (error) {
+                console.error('Subscription creation error:', error);
+                showToast('Payment successful but subscription activation failed. Please contact support.', 'error');
+            }
+        }
+
+        // =============================================================================
+        // MODAL CONTROLS
+        // =============================================================================
+        function showPaymentModal() {
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+        }
+
+        function showAuthModal(mode = 'login') {
+            isAuthModeSignup = mode === 'signup';
+            
+            document.getElementById('authTitle').textContent = isAuthModeSignup ? 'Create Account' : 'Sign In';
+            document.getElementById('authSubmitBtn').textContent = isAuthModeSignup ? 'Sign Up' : 'Sign In';
+            document.getElementById('nameGroup').style.display = isAuthModeSignup ? 'flex' : 'none';
+            document.getElementById('authSwitchText').textContent = isAuthModeSignup ? 'Already have an account? ' : "Don't have an account? ";
+            document.getElementById('authSwitchLink').textContent = isAuthModeSignup ? 'Sign In' : 'Sign Up';
+            
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authForm').reset();
+        }
+
+        function openPDFReader(pdfUrl) {
+            document.getElementById('pdfViewer').src = pdfUrl;
+            document.getElementById('readerModal').classList.add('active');
+        }
+
+        function closePDFReader() {
+            document.getElementById('readerModal').classList.remove('active');
+            document.getElementById('pdfViewer').src = '';
+        }
+
+        // =============================================================================
+        // UI HELPERS
+        // =============================================================================
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // =============================================================================
+        // EVENT LISTENERS
+        // =============================================================================
+        document.getElementById('loginBtn').addEventListener('click', () => showAuthModal('login'));
+        document.getElementById('signupBtn').addEventListener('click', () => showAuthModal('signup'));
+        document.getElementById('subscribeBtn').addEventListener('click', processPayment);
+        document.getElementById('authForm').addEventListener('submit', handleAuth);
+        
+        document.getElementById('authSwitchLink').addEventListener('click', () => {
+            isAuthModeSignup = !isAuthModeSignup;
+            showAuthModal(isAuthModeSignup ? 'signup' : 'login');
+        });
+
+        // Listen for auth state changes
+        if (supabaseClient) {
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_IN') {
+                    currentUser = session.user;
+                    checkSubscriptionStatus().then(() => updateUserUI());
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    userSubscription = null;
+                }
+            });
+        }
+
+        // =============================================================================
+        // SERVICE WORKER
+        // =============================================================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed'));
+        }
+
+        // =============================================================================
+        // START APP
+        // =============================================================================
+        initApp();
