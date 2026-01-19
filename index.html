@@ -712,6 +712,29 @@
             }
         }
 
+        // Handle email confirmation on page load
+        window.addEventListener('load', async () => {
+            // Check if user just confirmed email
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            const type = hashParams.get('type');
+
+            if (type === 'signup' && accessToken && supabaseClient) {
+                showToast('✅ Email confirmed! You can now sign in.', 'success');
+                
+                // Clear the hash from URL
+                setTimeout(() => {
+                    window.location.hash = '';
+                    showAuthModal('login');
+                }, 2000);
+            }
+
+            if (type === 'recovery' && accessToken && supabaseClient) {
+                showToast('Reset your password below', 'success');
+                // You can add password reset UI here if needed
+            }
+        });
+
         async function logout() {
             if (!supabaseClient) return;
 
