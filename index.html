@@ -551,56 +551,32 @@
         // =============================================================================
         async function initApp() {
             console.log('Starting ODL Library...');
-            loadDemoBooks();
 
             try {
+                // Check if Supabase is configured
                 if (!supabaseClient || CONFIG.supabase.url === 'YOUR_SUPABASE_URL') {
-                    console.warn('Supabase not configured - staying in demo mode');
+                    console.warn('Supabase not configured');
+                    document.getElementById('loadingState').innerHTML = `
+                        <div style="text-align: center; padding: 3rem;">
+                            <h2>⚙️ Configuration Required</h2>
+                            <p>Please configure Supabase to enable the library.</p>
+                        </div>
+                    `;
                     return;
                 }
 
+                // Load real data from Supabase
                 await checkUserAuth();
                 await loadBooks();
             } catch (error) {
                 console.error('Init error:', error);
+                document.getElementById('loadingState').innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <h2>❌ Error Loading Library</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
             }
-        }
-
-        function loadDemoBooks() {
-            console.log('Loading demo books...');
-            books = [
-                {
-                    id: '1',
-                    title: 'The Midnight Chronicles',
-                    author: 'Your Name',
-                    description: 'A gripping tale of mystery and adventure that will keep you on the edge of your seat.',
-                    cover_url: '',
-                    pdf_url: ''
-                },
-                {
-                    id: '2',
-                    title: 'Echoes of Tomorrow',
-                    author: 'Your Name',
-                    description: 'A thrilling journey through time and space with unforgettable characters.',
-                    cover_url: '',
-                    pdf_url: ''
-                },
-                {
-                    id: '3',
-                    title: 'Shadows in the Rain',
-                    author: 'Your Name',
-                    description: 'A suspenseful story filled with unexpected twists and emotional depth.',
-                    cover_url: '',
-                    pdf_url: ''
-                }
-            ];
-            
-            document.getElementById('loadingState').style.display = 'none';
-            renderBooks();
-            
-            setTimeout(() => {
-                showToast('Demo mode - Configure Supabase to enable full features', 'error');
-            }, 500);
         }
 
         // =============================================================================
@@ -736,6 +712,7 @@
         // =============================================================================
         async function loadBooks() {
             if (!supabaseClient || CONFIG.supabase.url === 'YOUR_SUPABASE_URL') {
+                document.getElementById('loadingState').style.display = 'none';
                 return;
             }
 
@@ -748,15 +725,26 @@
 
                 if (error) throw error;
 
-                if (data && data.length > 0) {
-                    books = data;
+                books = data || [];
+                
+                // Hide loading
+                document.getElementById('loadingState').style.display = 'none';
+                
+                // Render books
+                if (books.length > 0) {
                     renderBooks();
-                    showToast('Books loaded from database!', 'success');
+                    showToast(`${books.length} book(s) loaded successfully!`, 'success');
                 } else {
-                    showToast('No books in database - showing demo books', 'error');
+                    document.getElementById('booksGrid').innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                            <h2>📚 No Books Yet</h2>
+                            <p>Add books to your library via Supabase SQL Editor</p>
+                        </div>
+                    `;
                 }
             } catch (error) {
                 console.error('Load books error:', error);
+                document.getElementById('loadingState').style.display = 'none';
                 showToast('Failed to load books from database', 'error');
             }
         }
