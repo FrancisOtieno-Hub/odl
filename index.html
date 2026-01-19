@@ -147,12 +147,31 @@
             cursor: pointer;
             transition: all 0.3s ease;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
         }
 
         .book-card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 15px 40px rgba(108, 99, 255, 0.3);
+            box-shadow: 0 15px 40px rgba(108, 99, 255, 0.4);
             border-color: var(--primary);
+        }
+
+        .book-card::after {
+            content: '👁️ View';
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            background: rgba(108, 99, 255, 0.9);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .book-card:hover::after {
+            opacity: 1;
         }
 
         .book-cover {
@@ -750,26 +769,21 @@
         }
 
         function renderBooks() {
-            const grid = document.getElementById('booksGrid');
-            
-            if (books.length === 0) {
-                grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No books available yet. Check back soon!</p>';
-                return;
-            }
-
-            grid.innerHTML = books.map(book => `
-                <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
-                    <div class="book-cover">
-                        ${book.cover_url ? `<img src="${book.cover_url}" alt="${book.title}">` : '📖'}
-                    </div>
-                    <div class="book-info">
-                        <div class="book-title">${book.title}</div>
-                        <div class="book-author">by ${book.author}</div>
-                        <div class="book-description">${book.description || 'A captivating story awaits...'}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
+                    const grid = document.getElementById('booksGrid');
+                    
+                    if (books.length === 0) {
+                        grid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No books available yet. Check back soon!</p>';
+                        return;
+                    }
+        
+                    grid.innerHTML = books.map(book => `
+                        <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
+                            <div class="book-cover" style="height: 450px;">
+                                ${book.cover_url ? `<img src="${book.cover_url}" alt="${book.title}" style="width: 100%; height: 100%; object-fit: cover;">` : '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;"><div style="font-size: 5rem;">📖</div><div style="font-size: 1.2rem; font-weight: bold;">${book.title}</div></div>'}
+                            </div>
+                        </div>
+                    `).join('');
+                }
 
         function openBook(book) {
             if (!supabaseClient) {
