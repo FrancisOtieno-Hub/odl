@@ -148,6 +148,7 @@
             transition: all 0.3s ease;
             border: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
+            padding: 0;  /* Remove any padding */
         }
 
         .book-card:hover {
@@ -185,14 +186,16 @@
             color: white;
             overflow: hidden;
             position: relative;
+            margin: 0;  /* Remove margin */
+            padding: 0;  /* Remove padding */
         }
 
         .book-cover img {
             width: 100%;
             height: 100%;
-            object-fit: contain;  /* Changed from 'cover' to 'contain' */
+            object-fit: cover;  /* Changed back to cover for full width */
             object-position: center;
-            background: #1a1a2e;  /* Dark background for letterboxing */
+            display: block;  /* Remove any inline spacing */
         }
 
         .book-info {
@@ -834,11 +837,11 @@
             }
 
             grid.innerHTML = books.map(book => `
-                <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
-                    <div class="book-cover">
+                <div class="book-card" onclick='openBook(${JSON.stringify(book).replace(/'/g, "&apos;")})' style="padding: 0; margin: 0;">
+                    <div class="book-cover" style="margin: 0; padding: 0;">
                         ${book.cover_url ? 
-                            `<img src="${book.cover_url}" alt="${book.title}">` : 
-                            `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1rem; text-align: center;">
+                            `<img src="${book.cover_url}" alt="${book.title}" style="display: block; margin: 0; padding: 0;">` : 
+                            `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 2rem; text-align: center; width: 100%; height: 100%;">
                                 <div style="font-size: 4rem;">📖</div>
                                 <div style="font-size: 1.1rem; font-weight: bold; line-height: 1.3;">${book.title}</div>
                             </div>`
