@@ -193,9 +193,10 @@
         .book-cover img {
             width: 100%;
             height: 100%;
-            object-fit: cover;  /* Changed back to cover for full width */
+            object-fit: contain;  /* Shows full cover */
             object-position: center;
-            display: block;  /* Remove any inline spacing */
+            display: block;
+            background: #0f0f1e;  /* Dark background for sides */
         }
 
         .book-info {
