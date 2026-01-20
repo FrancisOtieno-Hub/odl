@@ -655,7 +655,7 @@
             }
         }
 
-        async function checkSubscriptionStatus() {
+         async function checkSubscriptionStatus() {
             if (!currentUser || !supabaseClient) return;
 
             try {
@@ -665,7 +665,12 @@
                     .eq('user_id', currentUser.id)
                     .eq('status', 'active')
                     .gte('end_date', new Date().toISOString())
-                    .single();
+                    .maybeSingle();  // Changed from .single() to .maybeSingle()
+
+                if (error && error.code !== 'PGRST116') {
+                    console.error('Subscription check error:', error);
+                    return;
+                }
 
                 if (data) {
                     userSubscription = data;
@@ -902,31 +907,37 @@
             }
 
             try {
+                const paymentReference = `ODL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
                 const handler = PaystackPop.setup({
                     key: CONFIG.paystack.publicKey,
                     email: currentUser.email,
                     amount: CONFIG.paystack.amount,
                     currency: CONFIG.paystack.currency,
-                    ref: `ODL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    ref: paymentReference,
                     metadata: {
-                        custom_fields: [{
-                            display_name: "User ID",
-                            variable_name: "user_id",
-                            value: currentUser.id
-                        }]
+                        custom_fields: [
+                            {
+                                display_name: "User ID",
+                                variable_name: "user_id",
+                                value: currentUser.id
+                            }
+                        ]
                     },
-                    callback: async (response) => {
-                        await handlePaymentSuccess(response);
+                    callback: function(response) {
+                        console.log('Payment successful:', response);
+                        handlePaymentSuccess(response);
                     },
-                    onClose: () => {
+                    onClose: function() {
                         console.log('Payment window closed');
+                        showToast('Payment cancelled', 'error');
                     }
                 });
 
                 handler.openIframe();
             } catch (error) {
                 console.error('Payment error:', error);
-                showToast('Payment failed to initialize', 'error');
+                showToast('Payment failed to initialize: ' + error.message, 'error');
             }
         }
 
@@ -934,6 +945,8 @@
             if (!supabaseClient) return;
 
             try {
+                showToast('Processing subscription...', 'success');
+                
                 const startDate = new Date();
                 const endDate = new Date();
                 endDate.setMonth(endDate.getMonth() + 1);
