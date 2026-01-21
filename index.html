@@ -1070,38 +1070,39 @@
         }
 
         function performSearch(query) {
-            const searchResults = document.getElementById('searchResults');
-            const booksGrid = document.getElementById('booksGrid');
-
-            if (!query) {
-                searchResults.classList.remove('active');
-                renderBooks(); // Show all books
-                return;
-            }
-
-            const lowerQuery = query.toLowerCase();
-            const filteredBooks = books.filter(book => 
-                book.title.toLowerCase().includes(lowerQuery) ||
-                book.author.toLowerCase().includes(lowerQuery) ||
-                (book.description && book.description.toLowerCase().includes(lowerQuery))
-            );
-
-            // Show dropdown results
-            displaySearchResults(filteredBooks, query);
-
-            // Filter books grid
-            if (filteredBooks.length > 0) {
-                books = filteredBooks;
-                renderBooks();
-            } else {
-                booksGrid.innerHTML = `
-                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
-                        <h2>📚 No Books Found</h2>
-                        <p>No books match "${query}". Try a different search term.</p>
-                    </div>
-                `;
-            }
-        }
+                    const searchResults = document.getElementById('searchResults');
+                    const booksGrid = document.getElementById('booksGrid');
+        
+                    if (!query) {
+                        searchResults.classList.remove('active');
+                        books = [...allBooks]; // Reset to all books
+                        renderBooks();
+                        return;
+                    }
+        
+                    const lowerQuery = query.toLowerCase();
+                    const filteredBooks = allBooks.filter(book => 
+                        book.title.toLowerCase().includes(lowerQuery) ||
+                        book.author.toLowerCase().includes(lowerQuery) ||
+                        (book.description && book.description.toLowerCase().includes(lowerQuery))
+                    );
+        
+                    // Show dropdown results
+                    displaySearchResults(filteredBooks, query);
+        
+                    // Filter books grid
+                    books = filteredBooks;
+                    if (filteredBooks.length > 0) {
+                        renderBooks();
+                    } else {
+                        booksGrid.innerHTML = `
+                            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                                <h2>📚 No Books Found</h2>
+                                <p>No books match "${query}". Try a different search term.</p>
+                            </div>
+                        `;
+                    }
+                }
 
         function displaySearchResults(results, query) {
             const searchResults = document.getElementById('searchResults');
