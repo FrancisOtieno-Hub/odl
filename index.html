@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1a1a2e">
-    <meta name="description" content="ODL Digital Library - Premium literary fiction eBooks">
+    <meta name="description" content="Odl Book Library - Premium eBooks">
     <title>OBL</title>
     <style>
         * {
@@ -493,11 +493,30 @@
         </div>
     </header>
 
-    <main class="container">
+        <main class="container">
         <section class="hero">
             <h1>Your Literary Universe Awaits</h1>
             <p>Access Premium eBooks with Unlimited Reading for just Ksh.300/month</p>
         </section>
+
+        <!-- ADD THIS SEARCH BAR -->
+        <div class="search-container">
+            <div class="search-box">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="Search for books by title..."
+                    autocomplete="off"
+                />
+                <button class="clear-search" id="clearSearch" style="display: none;">×</button>
+            </div>
+            <div id="searchResults" class="search-results"></div>
+        </div>
 
         <div id="loadingState" class="loading">
             <div class="spinner"></div>
