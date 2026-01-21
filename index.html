@@ -964,7 +964,7 @@
             }
         }
 
-        // =============================================================================
+// =============================================================================
         // BOOKS
         // =============================================================================
         async function loadBooks() {
@@ -983,14 +983,11 @@
                 if (error) throw error;
 
                 books = data || [];
+                allBooks = [...books];
                 
-                // Hide loading
                 document.getElementById('loadingState').style.display = 'none';
                 
-                // Render books
-                if (data && data.length > 0) {
-                    books = data;
-                    allBooks = [...data]; // Store original books
+                if (books.length > 0) {
                     renderBooks();
                     showToast(`${books.length} book(s) loaded successfully!`, 'success');
                 } else {
@@ -1000,6 +997,7 @@
                             <p>Add books to your library via Supabase SQL Editor</p>
                         </div>
                     `;
+                }
             } catch (error) {
                 console.error('Load books error:', error);
                 document.getElementById('loadingState').style.display = 'none';
@@ -1030,6 +1028,29 @@
             `).join('');
         }
 
+        function openBook(book) {
+            if (!supabaseClient) {
+                showToast('Please configure Supabase to enable reading', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                showToast('Please sign in to read books', 'error');
+                showAuthModal('login');
+                return;
+            }
+
+            if (!userSubscription) {
+                showPaymentModal();
+                return;
+            }
+
+            if (book.pdf_url) {
+                openPDFReader(book.pdf_url);
+            } else {
+                showToast('PDF not available for this book', 'error');
+            }
+        }
 
         // =============================================================================
         // SEARCH FUNCTIONALITY
@@ -1041,28 +1062,27 @@
             const clearButton = document.getElementById('clearSearch');
             const searchResults = document.getElementById('searchResults');
 
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.trim();
+            if (!searchInput) return;
 
-                // Show/hide clear button
+            searchInput.addEventListener('input', function(e) {
+                const query = e.target.value.trim();
                 clearButton.style.display = query ? 'flex' : 'none';
 
-                // Debounce search
                 clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
+                searchTimeout = setTimeout(function() {
                     performSearch(query);
                 }, 300);
             });
 
-            clearButton.addEventListener('click', () => {
+            clearButton.addEventListener('click', function() {
                 searchInput.value = '';
                 clearButton.style.display = 'none';
                 searchResults.classList.remove('active');
-                renderBooks(); // Show all books
+                books = [...allBooks];
+                renderBooks();
             });
 
-            // Close search results when clicking outside
-            document.addEventListener('click', (e) => {
+            document.addEventListener('click', function(e) {
                 if (!e.target.closest('.search-container')) {
                     searchResults.classList.remove('active');
                 }
@@ -1070,39 +1090,37 @@
         }
 
         function performSearch(query) {
-                    const searchResults = document.getElementById('searchResults');
-                    const booksGrid = document.getElementById('booksGrid');
-        
-                    if (!query) {
-                        searchResults.classList.remove('active');
-                        books = [...allBooks]; // Reset to all books
-                        renderBooks();
-                        return;
-                    }
-        
-                    const lowerQuery = query.toLowerCase();
-                    const filteredBooks = allBooks.filter(book => 
-                        book.title.toLowerCase().includes(lowerQuery) ||
-                        book.author.toLowerCase().includes(lowerQuery) ||
-                        (book.description && book.description.toLowerCase().includes(lowerQuery))
-                    );
-        
-                    // Show dropdown results
-                    displaySearchResults(filteredBooks, query);
-        
-                    // Filter books grid
-                    books = filteredBooks;
-                    if (filteredBooks.length > 0) {
-                        renderBooks();
-                    } else {
-                        booksGrid.innerHTML = `
-                            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
-                                <h2>📚 No Books Found</h2>
-                                <p>No books match "${query}". Try a different search term.</p>
-                            </div>
-                        `;
-                    }
-                }
+            const searchResults = document.getElementById('searchResults');
+            const booksGrid = document.getElementById('booksGrid');
+
+            if (!query) {
+                searchResults.classList.remove('active');
+                books = [...allBooks];
+                renderBooks();
+                return;
+            }
+
+            const lowerQuery = query.toLowerCase();
+            const filteredBooks = allBooks.filter(function(book) {
+                return book.title.toLowerCase().includes(lowerQuery) ||
+                       book.author.toLowerCase().includes(lowerQuery) ||
+                       (book.description && book.description.toLowerCase().includes(lowerQuery));
+            });
+
+            displaySearchResults(filteredBooks, query);
+
+            books = filteredBooks;
+            if (filteredBooks.length > 0) {
+                renderBooks();
+            } else {
+                booksGrid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                        <h2>📚 No Books Found</h2>
+                        <p>No books match "${query}". Try a different search term.</p>
+                    </div>
+                `;
+            }
+        }
 
         function displaySearchResults(results, query) {
             const searchResults = document.getElementById('searchResults');
@@ -1117,34 +1135,33 @@
                 return;
             }
 
-            const highlightText = (text, query) => {
-                const regex = new RegExp(`(${query})`, 'gi');
+            function highlightText(text, query) {
+                const regex = new RegExp('(' + query + ')', 'gi');
                 return text.replace(regex, '<span class="search-highlight">$1</span>');
-            };
+            }
 
-            searchResults.innerHTML = results.slice(0, 5).map(book => `
-                <div class="search-result-item" onclick='selectSearchResult(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
-                    <div class="search-result-cover">
-                        ${book.cover_url ? 
-                            `<img src="${book.cover_url}" alt="${book.title}">` : 
-                            '📖'
-                        }
+            searchResults.innerHTML = results.slice(0, 5).map(function(book) {
+                return `
+                    <div class="search-result-item" onclick='selectSearchResult(${JSON.stringify(book).replace(/'/g, "&apos;")})'>
+                        <div class="search-result-cover">
+                            ${book.cover_url ? 
+                                `<img src="${book.cover_url}" alt="${book.title}">` : 
+                                '📖'
+                            }
+                        </div>
+                        <div class="search-result-info">
+                            <div class="search-result-title">${highlightText(book.title, query)}</div>
+                            <div class="search-result-author">by ${highlightText(book.author, query)}</div>
+                        </div>
                     </div>
-                    <div class="search-result-info">
-                        <div class="search-result-title">${highlightText(book.title, query)}</div>
-                        <div class="search-result-author">by ${highlightText(book.author, query)}</div>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             searchResults.classList.add('active');
         }
 
         function selectSearchResult(book) {
-            // Close search results
             document.getElementById('searchResults').classList.remove('active');
-            
-            // Open the book
             openBook(book);
         }
         
