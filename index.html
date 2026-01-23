@@ -697,7 +697,7 @@
         </div>
     </div>
 
-    <!-- Auth Modal -->
+<!-- Auth Modal -->
     <div class="modal" id="authModal">
         <div class="modal-content">
             <button class="close-modal" onclick="closeAuthModal()">×</button>
@@ -713,16 +713,64 @@
                     <label for="email">Email</label>
                     <input type="email" id="email" placeholder="your@email.com" required>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="passwordGroup">
                     <label for="password">Password</label>
                     <input type="password" id="password" placeholder="••••••••" required>
                 </div>
                 <button type="submit" class="btn btn-primary" id="authSubmitBtn">Sign In</button>
             </form>
+            
+            <!-- ADD THIS FORGOT PASSWORD LINK -->
             <div class="auth-switch">
-                <span id="authSwitchText">Don't have an account? </span>
-                <a id="authSwitchLink">Sign Up</a>
+                <a id="forgotPasswordLink" style="display: none; color: var(--secondary); text-decoration: underline; cursor: pointer; margin-bottom: 0.5rem;">Forgot Password?</a>
+                <div>
+                    <span id="authSwitchText">Don't have an account? </span>
+                    <a id="authSwitchLink">Sign Up</a>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Password Reset Modal -->
+    <div class="modal" id="resetPasswordModal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeResetPasswordModal()">×</button>
+            <div class="modal-header">
+                <h2>Reset Password</h2>
+                <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">Enter your email and we'll send you a reset link</p>
+            </div>
+            <form class="auth-form" id="resetPasswordForm">
+                <div class="form-group">
+                    <label for="resetEmail">Email</label>
+                    <input type="email" id="resetEmail" placeholder="your@email.com" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Send Reset Link</button>
+            </form>
+            <div class="auth-switch">
+                <a onclick="closeResetPasswordModal(); showAuthModal('login');" style="cursor: pointer;">Back to Sign In</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Password Modal (after clicking email link) -->
+    <div class="modal" id="newPasswordModal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeNewPasswordModal()">×</button>
+            <div class="modal-header">
+                <h2>Set New Password</h2>
+                <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">Enter your new password below</p>
+            </div>
+            <form class="auth-form" id="newPasswordForm">
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" placeholder="••••••••" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="••••••••" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary">Update Password</button>
+            </form>
         </div>
     </div>
 
@@ -780,6 +828,7 @@
             console.log('Starting ODL Library...');
 
             initSearch(); 
+            checkPasswordReset();
 
             try {
                 // Check if Supabase is configured
@@ -927,6 +976,112 @@
             }
         }
 
+        // =============================================================================
+        // PASSWORD RESET
+        // =============================================================================
+        
+        function showResetPasswordModal() {
+            closeAuthModal();
+            document.getElementById('resetPasswordModal').classList.add('active');
+        }
+
+        function closeResetPasswordModal() {
+            document.getElementById('resetPasswordModal').classList.remove('active');
+            document.getElementById('resetPasswordForm').reset();
+        }
+
+        function closeNewPasswordModal() {
+            document.getElementById('newPasswordModal').classList.remove('active');
+            document.getElementById('newPasswordForm').reset();
+        }
+
+        async function handlePasswordReset(event) {
+            event.preventDefault();
+            
+            if (!supabaseClient) {
+                showToast('Please configure Supabase first', 'error');
+                return;
+            }
+
+            const email = document.getElementById('resetEmail').value;
+
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}?reset=true`
+                });
+
+                if (error) throw error;
+
+                showToast('Password reset email sent! Check your inbox.', 'success');
+                closeResetPasswordModal();
+            } catch (error) {
+                console.error('Password reset error:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function handleNewPassword(event) {
+            event.preventDefault();
+            
+            if (!supabaseClient) {
+                showToast('Please configure Supabase first', 'error');
+                return;
+            }
+
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showToast('Passwords do not match', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient.auth.updateUser({
+                    password: newPassword
+                });
+
+                if (error) throw error;
+
+                showToast('✅ Password updated successfully!', 'success');
+                closeNewPasswordModal();
+                
+                // Remove reset parameter from URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Show sign in modal
+                setTimeout(() => {
+                    showAuthModal('login');
+                }, 1500);
+            } catch (error) {
+                console.error('Password update error:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Check if user is coming from password reset email
+        function checkPasswordReset() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isReset = urlParams.get('reset');
+            
+            // Check for password reset token in URL hash
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            const type = hashParams.get('type');
+
+            if ((isReset === 'true' || type === 'recovery') && accessToken) {
+                // Show new password modal
+                setTimeout(() => {
+                    document.getElementById('newPasswordModal').classList.add('active');
+                }, 500);
+            }
+        }
+
         // Handle email confirmation on page load
         window.addEventListener('load', async () => {
             // Check if user just confirmed email
@@ -964,7 +1119,7 @@
             }
         }
 
-// =============================================================================
+        // =============================================================================
         // BOOKS
         // =============================================================================
         async function loadBooks() {
@@ -1316,6 +1471,9 @@
             document.getElementById('authSwitchText').textContent = isAuthModeSignup ? 'Already have an account? ' : "Don't have an account? ";
             document.getElementById('authSwitchLink').textContent = isAuthModeSignup ? 'Sign In' : 'Sign Up';
             
+            // Show "Forgot Password" only on login
+            document.getElementById('forgotPasswordLink').style.display = isAuthModeSignup ? 'none' : 'block';
+            
             document.getElementById('authModal').classList.add('active');
         }
 
@@ -1355,6 +1513,9 @@
         document.getElementById('signupBtn').addEventListener('click', () => showAuthModal('signup'));
         document.getElementById('subscribeBtn').addEventListener('click', processPayment);
         document.getElementById('authForm').addEventListener('submit', handleAuth);
+        document.getElementById('resetPasswordForm').addEventListener('submit', handlePasswordReset);
+        document.getElementById('newPasswordForm').addEventListener('submit', handleNewPassword);
+        document.getElementById('forgotPasswordLink').addEventListener('click', showResetPasswordModal);
         
         document.getElementById('authSwitchLink').addEventListener('click', () => {
             isAuthModeSignup = !isAuthModeSignup;
@@ -1370,6 +1531,9 @@
                 } else if (event === 'SIGNED_OUT') {
                     currentUser = null;
                     userSubscription = null;
+                } else if (event === 'PASSWORD_RECOVERY') {
+                    // Show new password modal
+                    document.getElementById('newPasswordModal').classList.add('active');
                 }
             });
         }
