@@ -826,12 +826,19 @@
         // =============================================================================
         async function initApp() {
             console.log('Starting ODL Library...');
+            
+            // Check for password reset FIRST
+            const isResettingPassword = checkPasswordReset();
+            
+            initSearch();
 
-            initSearch(); 
-            checkPasswordReset();
+            // Don't load books if we're in password reset mode
+            if (isResettingPassword) {
+                document.getElementById('loadingState').style.display = 'none';
+                return;
+            }
 
             try {
-                // Check if Supabase is configured
                 if (!supabaseClient || CONFIG.supabase.url === 'YOUR_SUPABASE_URL') {
                     console.warn('Supabase not configured');
                     document.getElementById('loadingState').innerHTML = `
@@ -843,7 +850,6 @@
                     return;
                 }
 
-                // Load real data from Supabase
                 await checkUserAuth();
                 await loadBooks();
             } catch (error) {
@@ -995,6 +1001,7 @@
             document.getElementById('newPasswordForm').reset();
         }
 
+        
         async function handlePasswordReset(event) {
             event.preventDefault();
             
@@ -1003,23 +1010,34 @@
                 return;
             }
 
-            const email = document.getElementById('resetEmail').value;
+            const email = document.getElementById('resetEmail').value.trim();
+            
+            if (!email) {
+                showToast('Please enter your email', 'error');
+                return;
+            }
+
+            console.log('Sending password reset email to:', email);
 
             try {
-                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}?reset=true`
+                const { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/`  // Simplified redirect
                 });
+
+                console.log('Reset email response:', { data, error });
 
                 if (error) throw error;
 
-                showToast('Password reset email sent! Check your inbox.', 'success');
+                showToast('✅ Password reset email sent! Check your inbox and spam folder.', 'success');
                 closeResetPasswordModal();
+                
             } catch (error) {
                 console.error('Password reset error:', error);
-                showToast(error.message, 'error');
+                showToast('Error: ' + error.message, 'error');
             }
         }
 
+        
         async function handleNewPassword(event) {
             event.preventDefault();
             
@@ -1066,20 +1084,48 @@
 
         // Check if user is coming from password reset email
         function checkPasswordReset() {
+            // Check URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const isReset = urlParams.get('reset');
             
-            // Check for password reset token in URL hash
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            const accessToken = hashParams.get('access_token');
-            const type = hashParams.get('type');
-
-            if ((isReset === 'true' || type === 'recovery') && accessToken) {
-                // Show new password modal
+            // Check URL hash (Supabase puts tokens here)
+            const hash = window.location.hash;
+            
+            console.log('Checking password reset:', { isReset, hash }); // Debug log
+            
+            if (hash && hash.includes('access_token')) {
+                const hashParams = new URLSearchParams(hash.substring(1));
+                const accessToken = hashParams.get('access_token');
+                const type = hashParams.get('type');
+                
+                console.log('Found tokens:', { accessToken: !!accessToken, type }); // Debug log
+                
+                if (type === 'recovery' && accessToken) {
+                    console.log('Showing new password modal'); // Debug log
+                    
+                    // Wait a bit for the page to fully load
+                    setTimeout(() => {
+                        document.getElementById('newPasswordModal').classList.add('active');
+                        showToast('Please enter your new password', 'success');
+                    }, 500);
+                    
+                    return true;
+                }
+            }
+            
+            // Alternative check for #reset=true
+            if (isReset === 'true' || hash.includes('reset=true')) {
+                console.log('Found reset parameter'); // Debug log
+                
                 setTimeout(() => {
                     document.getElementById('newPasswordModal').classList.add('active');
+                    showToast('Please enter your new password', 'success');
                 }, 500);
+                
+                return true;
             }
+            
+            return false;
         }
 
         // Handle email confirmation on page load
@@ -1525,6 +1571,8 @@
         // Listen for auth state changes
         if (supabaseClient) {
             supabaseClient.auth.onAuthStateChange((event, session) => {
+                console.log('Auth state changed:', event); // Debug log
+                
                 if (event === 'SIGNED_IN') {
                     currentUser = session.user;
                     checkSubscriptionStatus().then(() => updateUserUI());
@@ -1532,8 +1580,12 @@
                     currentUser = null;
                     userSubscription = null;
                 } else if (event === 'PASSWORD_RECOVERY') {
+                    console.log('Password recovery event detected');
                     // Show new password modal
-                    document.getElementById('newPasswordModal').classList.add('active');
+                    setTimeout(() => {
+                        document.getElementById('newPasswordModal').classList.add('active');
+                        showToast('Please enter your new password', 'success');
+                    }, 500);
                 }
             });
         }
