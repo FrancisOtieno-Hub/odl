@@ -827,8 +827,8 @@
         async function initApp() {
             console.log('Starting ODL Library...');
             
-            // Check for password reset FIRST
-            const isResettingPassword = checkPasswordReset();
+            // Check for password reset FIRST and WAIT for it
+            const isResettingPassword = await checkPasswordReset();
             
             initSearch();
 
@@ -1060,30 +1060,47 @@
             }
 
             try {
-                const { error } = await supabaseClient.auth.updateUser({
+                // Check if we have a session
+                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+                
+                if (sessionError || !session) {
+                    console.error('No active session:', sessionError);
+                    showToast('Session expired. Please request a new reset link.', 'error');
+                    closeNewPasswordModal();
+                    return;
+                }
+
+                console.log('Updating password with active session');
+
+                const { data, error } = await supabaseClient.auth.updateUser({
                     password: newPassword
                 });
 
                 if (error) throw error;
 
+                console.log('Password updated successfully:', data);
+
                 showToast('✅ Password updated successfully!', 'success');
                 closeNewPasswordModal();
                 
-                // Remove reset parameter from URL
-                window.history.replaceState({}, document.title, window.location.pathname);
+                // Sign out to force fresh login
+                await supabaseClient.auth.signOut();
                 
-                // Show sign in modal
+                // Show sign in modal after a delay
                 setTimeout(() => {
+                    showToast('Please sign in with your new password', 'success');
                     showAuthModal('login');
                 }, 1500);
+                
             } catch (error) {
                 console.error('Password update error:', error);
-                showToast(error.message, 'error');
+                showToast('Error: ' + error.message, 'error');
             }
         }
+        
 
         // Check if user is coming from password reset email
-        function checkPasswordReset() {
+        async function checkPasswordReset() {
             // Check URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const isReset = urlParams.get('reset');
@@ -1091,38 +1108,59 @@
             // Check URL hash (Supabase puts tokens here)
             const hash = window.location.hash;
             
-            console.log('Checking password reset:', { isReset, hash }); // Debug log
+            console.log('Checking password reset:', { isReset, hash });
             
             if (hash && hash.includes('access_token')) {
                 const hashParams = new URLSearchParams(hash.substring(1));
                 const accessToken = hashParams.get('access_token');
+                const refreshToken = hashParams.get('refresh_token');
                 const type = hashParams.get('type');
                 
-                console.log('Found tokens:', { accessToken: !!accessToken, type }); // Debug log
+                console.log('Found tokens:', { accessToken: !!accessToken, type });
                 
-                if (type === 'recovery' && accessToken) {
-                    console.log('Showing new password modal'); // Debug log
+                if (type === 'recovery' && accessToken && refreshToken) {
+                    console.log('Recovery mode - setting session');
                     
-                    // Wait a bit for the page to fully load
-                    setTimeout(() => {
-                        document.getElementById('newPasswordModal').classList.add('active');
-                        showToast('Please enter your new password', 'success');
-                    }, 500);
-                    
-                    return true;
+                    try {
+                        // Set the session using the tokens from URL
+                        const { data, error } = await supabaseClient.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken
+                        });
+
+                        if (error) {
+                            console.error('Session error:', error);
+                            showToast('Session error. Please request a new reset link.', 'error');
+                            return false;
+                        }
+
+                        console.log('Session set successfully:', data);
+                        
+                        // Now show the new password modal
+                        setTimeout(() => {
+                            document.getElementById('newPasswordModal').classList.add('active');
+                            document.getElementById('loadingState').style.display = 'none';
+                            showToast('Please enter your new password', 'success');
+                            
+                            // Clean up URL
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }, 500);
+                        
+                        return true;
+                        
+                    } catch (error) {
+                        console.error('Error setting session:', error);
+                        showToast('Error: ' + error.message, 'error');
+                        return false;
+                    }
                 }
             }
             
             // Alternative check for #reset=true
-            if (isReset === 'true' || hash.includes('reset=true')) {
-                console.log('Found reset parameter'); // Debug log
-                
-                setTimeout(() => {
-                    document.getElementById('newPasswordModal').classList.add('active');
-                    showToast('Please enter your new password', 'success');
-                }, 500);
-                
-                return true;
+            if (isReset === 'true' || (hash && hash.includes('reset=true'))) {
+                console.log('Found reset parameter but no tokens');
+                showToast('Please click the link in your email', 'error');
+                return false;
             }
             
             return false;
