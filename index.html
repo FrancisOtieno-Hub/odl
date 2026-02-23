@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1a1a2e">
     <meta name="description" content="Odl Book Library - Premium eBooks">
+    <link rel="manifest" href="/manifest.json">
     <title>OBL - Odl Book Library</title>
     <style>
         * {
@@ -158,7 +159,7 @@
         }
 
         .book-card::after {
-            content: '👁️ View';
+            content: 'View';
             position: absolute;
             bottom: 1rem;
             right: 1rem;
@@ -295,10 +296,13 @@
         }
 
         .modal-features li:before {
-            content: "✓";
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 1.2rem;
+            content: "";
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236C63FF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-size: contain;
         }
 
         .modal-actions {
@@ -629,19 +633,132 @@
                 height: 350px;  /* Taller for single column */
             }
         }
+
+        /* Install Prompt Banner */
+        .install-banner {
+            display: none;
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--dark-light);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            align-items: center;
+            gap: 1rem;
+            width: 90%;
+            max-width: 480px;
+            animation: slideUp 0.4s ease;
+        }
+
+        .install-banner.visible {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to   { transform: translateX(-50%) translateY(0);     opacity: 1; }
+        }
+
+        .install-banner-text {
+            flex: 1;
+        }
+
+        .install-banner-text strong {
+            display: block;
+            color: white;
+            font-size: 1rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .install-banner-text span {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            opacity: 0.7;
+        }
+
+        .install-banner-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .install-btn-dismiss {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--text-light);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .install-btn-dismiss:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .install-btn-confirm {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .install-btn-confirm:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.4);
+        }
     </style>
 </head>
 
 <body>
     <header class="header">
         <div class="header-content">
-            <div class="logo">📚 Odl Book Library</div>
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:0.5rem;">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#6C63FF"/>
+                            <stop offset="100%" style="stop-color:#FF6B6B"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                Odl Book Library
+            </div>
             <div class="user-actions" id="userActions">
                 <button class="btn btn-primary" id="loginBtn">Sign In</button>
                 <button class="btn btn-secondary" id="signupBtn">Sign Up</button>
             </div>
         </div>
     </header>
+
+    <!-- Install Prompt Banner -->
+    <div class="install-banner" id="installBanner">
+        <div class="install-banner-text">
+            <strong>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6C63FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:0.4rem;">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                    Install OBL
+                </strong>
+            <span>Add to home screen for the best experience</span>
+        </div>
+        <div class="install-banner-actions">
+            <button class="install-btn-dismiss" id="installDismiss">Not now</button>
+            <button class="install-btn-confirm" id="installConfirm">Install</button>
+        </div>
+    </div>
 
         <main class="container">
         <section class="hero">
@@ -663,7 +780,7 @@
                     placeholder="Search for books by title..."
                     autocomplete="off"
                 />
-                <button class="clear-search" id="clearSearch" style="display: none;">×</button>
+                <button class="clear-search" id="clearSearch" style="display: none;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div id="searchResults" class="search-results"></div>
         </div>
@@ -679,7 +796,7 @@
     <!-- Payment Modal -->
     <div class="modal" id="paymentModal">
         <div class="modal-content">
-            <button class="close-modal" onclick="closePaymentModal()">×</button>
+            <button class="close-modal" onclick="closePaymentModal()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             <div class="modal-header">
                 <h2>Subscribe to OBL</h2>
                 <div class="modal-price">Ksh.300<span style="font-size: 1rem; color: var(--text-light);">/month</span></div>
@@ -700,7 +817,7 @@
 <!-- Auth Modal -->
     <div class="modal" id="authModal">
         <div class="modal-content">
-            <button class="close-modal" onclick="closeAuthModal()">×</button>
+            <button class="close-modal" onclick="closeAuthModal()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             <div class="modal-header">
                 <h2 id="authTitle">Sign In</h2>
             </div>
@@ -734,7 +851,7 @@
     <!-- Password Reset Modal -->
     <div class="modal" id="resetPasswordModal">
         <div class="modal-content">
-            <button class="close-modal" onclick="closeResetPasswordModal()">×</button>
+            <button class="close-modal" onclick="closeResetPasswordModal()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             <div class="modal-header">
                 <h2>Reset Password</h2>
                 <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">Enter your email and we'll send you a reset link</p>
@@ -755,7 +872,7 @@
     <!-- New Password Modal (after clicking email link) -->
     <div class="modal" id="newPasswordModal">
         <div class="modal-content">
-            <button class="close-modal" onclick="closeNewPasswordModal()">×</button>
+            <button class="close-modal" onclick="closeNewPasswordModal()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             <div class="modal-header">
                 <h2>Set New Password</h2>
                 <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 0.5rem;">Enter your new password below</p>
@@ -777,7 +894,7 @@
     <!-- PDF Reader Modal -->
     <div class="modal" id="readerModal">
         <div class="modal-content" style="max-width: 95%; max-height: 95vh; padding: 0;">
-            <button class="close-modal" onclick="closePDFReader()" style="z-index: 10; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 8px;">×</button>
+            <button class="close-modal" onclick="closePDFReader()" style="z-index: 10; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 8px;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             <iframe id="pdfViewer" style="width: 100%; height: 90vh; border: none; border-radius: 16px;"></iframe>
         </div>
     </div>
@@ -843,7 +960,7 @@
                     console.warn('Supabase not configured');
                     document.getElementById('loadingState').innerHTML = `
                         <div style="text-align: center; padding: 3rem;">
-                            <h2>⚙️ Configuration Required</h2>
+                            <h2>Configuration Required</h2>
                             <p>Please configure Supabase to enable the library.</p>
                         </div>
                     `;
@@ -856,7 +973,7 @@
                 console.error('Init error:', error);
                 document.getElementById('loadingState').innerHTML = `
                     <div style="text-align: center; padding: 3rem;">
-                        <h2>❌ Error Loading Library</h2>
+                        <h2>Error Loading Library</h2>
                         <p>${error.message}</p>
                     </div>
                 `;
@@ -915,7 +1032,7 @@
                 
                 if (userSubscription) {
                     userActions.innerHTML = `
-                        <div class="subscription-badge">⭐ Premium Member</div>
+                        <div class="subscription-badge">Premium Member</div>
                         <button class="btn btn-secondary" onclick="logout()">Logout</button>
                     `;
                 } else {
@@ -1028,7 +1145,7 @@
 
                 if (error) throw error;
 
-                showToast('✅ Password reset email sent! Check your inbox and spam folder.', 'success');
+                showToast('Password reset email sent! Check your inbox and spam folder.', 'success');
                 closeResetPasswordModal();
                 
             } catch (error) {
@@ -1080,7 +1197,7 @@
 
                 console.log('Password updated successfully:', data);
 
-                showToast('✅ Password updated successfully!', 'success');
+                showToast('Password updated successfully!', 'success');
                 closeNewPasswordModal();
                 
                 // Sign out to force fresh login
@@ -1174,7 +1291,7 @@
             const type = hashParams.get('type');
 
             if (type === 'signup' && accessToken && supabaseClient) {
-                showToast('✅ Email confirmed! You can now sign in.', 'success');
+                showToast('Email confirmed! You can now sign in.', 'success');
                 
                 // Clear the hash from URL
                 setTimeout(() => {
@@ -1232,7 +1349,7 @@
                 } else {
                     document.getElementById('booksGrid').innerHTML = `
                         <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
-                            <h2>📚 No Books Yet</h2>
+                            <h2>No Books Yet</h2>
                             <p>Add books to your library via Supabase SQL Editor</p>
                         </div>
                     `;
@@ -1258,7 +1375,7 @@
                         ${book.cover_url ? 
                             `<img src="${book.cover_url}" alt="${book.title}" style="display: block; margin: 0; padding: 0;">` : 
                             `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 2rem; text-align: center; width: 100%; height: 100%;">
-                                <div style="font-size: 4rem;">📖</div>
+                                <div><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
                                 <div style="font-size: 1.1rem; font-weight: bold; line-height: 1.3;">${book.title}</div>
                             </div>`
                         }
@@ -1354,7 +1471,7 @@
             } else {
                 booksGrid.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
-                        <h2>📚 No Books Found</h2>
+                        <h2>No Books Found</h2>
                         <p>No books match "${query}". Try a different search term.</p>
                     </div>
                 `;
@@ -1385,7 +1502,7 @@
                         <div class="search-result-cover">
                             ${book.cover_url ? 
                                 `<img src="${book.cover_url}" alt="${book.title}">` : 
-                                '📖'
+                                '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
                             }
                         </div>
                         <div class="search-result-info">
@@ -1528,7 +1645,7 @@
                 userSubscription = data;
                 updateUserUI();
                 closePaymentModal();
-                showToast('🎉 Subscription activated! Enjoy unlimited reading!', 'success');
+                showToast('Subscription activated! Enjoy unlimited reading!', 'success');
             } catch (error) {
                 console.error('Subscription creation error:', error);
                 showToast('Payment successful but subscription activation failed. Please contact support.', 'error');
@@ -1633,6 +1750,48 @@
         // =============================================================================
         console.log('Starting ODL Library...');
         initApp();
+
+        // =============================================================================
+        // INSTALL PROMPT
+        // =============================================================================
+        let deferredInstallPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            document.getElementById('installBanner').classList.add('visible');
+        });
+
+        document.getElementById('installConfirm').addEventListener('click', async () => {
+            if (!deferredInstallPrompt) return;
+            document.getElementById('installBanner').classList.remove('visible');
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            console.log('Install prompt outcome:', outcome);
+            deferredInstallPrompt = null;
+        });
+
+        document.getElementById('installDismiss').addEventListener('click', () => {
+            document.getElementById('installBanner').classList.remove('visible');
+            deferredInstallPrompt = null;
+        });
+
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('installBanner').classList.remove('visible');
+            deferredInstallPrompt = null;
+            showToast('OBL installed successfully!', 'success');
+        });
+
+        // =============================================================================
+        // SERVICE WORKER REGISTRATION
+        // =============================================================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registered:', reg.scope))
+                    .catch(err => console.error('SW registration failed:', err));
+            });
+        }
     </script>
 </body>
 </html>
