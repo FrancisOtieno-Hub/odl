@@ -635,87 +635,71 @@
         }
 
         /* Install Prompt Banner */
-        .install-banner {
+        /* Install FAB */
+        .install-fab {
             display: none;
             position: fixed;
-            bottom: 1.5rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--dark-light);
-            border: 2px solid var(--primary);
-            border-radius: 16px;
-            padding: 1rem 1.5rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            bottom: 2rem;
+            right: 2rem;
             z-index: 1500;
-            align-items: center;
-            gap: 1rem;
-            width: 90%;
-            max-width: 480px;
-            animation: slideUp 0.4s ease;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.75rem;
         }
 
-        .install-banner.visible {
+        .install-fab.visible {
             display: flex;
+            animation: fabIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        @keyframes slideUp {
-            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
-            to   { transform: translateX(-50%) translateY(0);     opacity: 1; }
+        @keyframes fabIn {
+            from { transform: scale(0.5) translateY(20px); opacity: 0; }
+            to   { transform: scale(1) translateY(0);      opacity: 1; }
         }
 
-        .install-banner-text {
-            flex: 1;
-        }
-
-        .install-banner-text strong {
-            display: block;
-            color: white;
-            font-size: 1rem;
-            margin-bottom: 0.2rem;
-        }
-
-        .install-banner-text span {
-            font-size: 0.85rem;
+        .install-fab-tooltip {
+            background: var(--dark-light);
+            border: 1px solid rgba(255,255,255,0.12);
             color: var(--text-light);
-            opacity: 0.7;
-        }
-
-        .install-banner-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-shrink: 0;
-        }
-
-        .install-btn-dismiss {
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.2);
-            color: var(--text-light);
-            padding: 0.5rem 0.75rem;
+            font-size: 0.82rem;
+            padding: 0.5rem 0.85rem;
             border-radius: 8px;
-            font-size: 0.85rem;
-            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            opacity: 0;
+            transform: translateX(10px);
             transition: all 0.2s ease;
+            pointer-events: none;
         }
 
-        .install-btn-dismiss:hover {
-            background: rgba(255,255,255,0.1);
+        .install-fab:hover .install-fab-tooltip {
+            opacity: 1;
+            transform: translateX(0);
         }
 
-        .install-btn-confirm {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        .install-fab-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
             border: none;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(108, 99, 255, 0.5);
+            transition: all 0.25s ease;
+            position: relative;
         }
 
-        .install-btn-confirm:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.4);
+        .install-fab-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 28px rgba(108, 99, 255, 0.7);
+        }
+
+        .install-fab-btn:active {
+            transform: scale(0.96);
         }
     </style>
 </head>
@@ -743,21 +727,16 @@
         </div>
     </header>
 
-    <!-- Install Prompt Banner -->
-    <div class="install-banner" id="installBanner">
-        <div class="install-banner-text">
-            <strong>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6C63FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:0.4rem;">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                    </svg>
-                    Install OBL
-                </strong>
-            <span>Add to home screen for the best experience</span>
-        </div>
-        <div class="install-banner-actions">
-            <button class="install-btn-dismiss" id="installDismiss">Not now</button>
-            <button class="install-btn-confirm" id="installConfirm">Install</button>
-        </div>
+    <!-- Install FAB -->
+    <div class="install-fab" id="installFab">
+        <span class="install-fab-tooltip">Install OBL App</span>
+        <button class="install-fab-btn" id="installFabBtn" aria-label="Install OBL App">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+        </button>
     </div>
 
         <main class="container">
@@ -1752,32 +1731,27 @@
         initApp();
 
         // =============================================================================
-        // INSTALL PROMPT
+        // INSTALL FAB
         // =============================================================================
         let deferredInstallPrompt = null;
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredInstallPrompt = e;
-            document.getElementById('installBanner').classList.add('visible');
+            document.getElementById('installFab').classList.add('visible');
         });
 
-        document.getElementById('installConfirm').addEventListener('click', async () => {
+        document.getElementById('installFabBtn').addEventListener('click', async () => {
             if (!deferredInstallPrompt) return;
-            document.getElementById('installBanner').classList.remove('visible');
             deferredInstallPrompt.prompt();
             const { outcome } = await deferredInstallPrompt.userChoice;
             console.log('Install prompt outcome:', outcome);
             deferredInstallPrompt = null;
-        });
-
-        document.getElementById('installDismiss').addEventListener('click', () => {
-            document.getElementById('installBanner').classList.remove('visible');
-            deferredInstallPrompt = null;
+            document.getElementById('installFab').classList.remove('visible');
         });
 
         window.addEventListener('appinstalled', () => {
-            document.getElementById('installBanner').classList.remove('visible');
+            document.getElementById('installFab').classList.remove('visible');
             deferredInstallPrompt = null;
             showToast('OBL installed successfully!', 'success');
         });
